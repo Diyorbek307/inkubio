@@ -1,0 +1,24 @@
+[Unit]
+Description=INKUBIO website
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/inkubio/app
+# passwords for mail/Telegram/admin live here (not in the site files)
+EnvironmentFile=-/opt/inkubio/.env
+Environment=NODE_ENV=production PORT=3000 TRUST_PROXY=1 ORDERS_FILE=/var/lib/inkubio/orders.csv
+ExecStart=/usr/bin/node server.js
+User=inkubio
+Group=inkubio
+Restart=always
+RestartSec=3
+# the site can only write its orders file
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/inkubio
+
+[Install]
+WantedBy=multi-user.target

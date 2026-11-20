@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>INKUBIO — инкубаторий</title>
+  <meta name="description" content="Инкубаторий INKUBIO: суточные цыплята бройлеров Ross 308 и Cobb 500 с доставкой. Путь от яйца до вашего хозяйства." />
+  <meta name="theme-color" content="#0a0a0c" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="INKUBIO — инкубаторий" />
+  <meta property="og:description" content="Каждая большая жизнь начинается с маленького чуда. Суточные цыплята Ross 308 и Cobb 500 с доставкой." />
+  <meta property="og:locale" content="ru_RU" />
+  <link rel="preload" href="fonts/unbounded-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/manrope-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="modulepreload" href="vendor/three/build/three.module.min.js" />
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Какая минимальная партия?", "acceptedAnswer": {"@type": "Answer", "text": "Минимальный объём зависит от породы и региона доставки — менеджер назовёт его при первом звонке. Небольшие хозяйства тоже обслуживаем."}}, {"@type": "Question", "name": "Как подготовить помещение к приезду цыплят?", "acceptedAnswer": {"@type": "Answer", "text": "За сутки прогрейте брудер: в первые дни под источником тепла нужно 32–34 °C, затем температуру снижают постепенно. Застелите чистую сухую подстилку, поставьте поилки с водой комнатной температуры и корм для стартового периода. Подробную памятку пришлём вместе с подтверждением заказа."}}, {"@type": "Question", "name": "Цыплята вакцинированы?", "acceptedAnswer": {"@type": "Answer", "text": "Да, вакцинация проводится в первый день жизни на нашей линии, до упаковки. Схему вакцинации и ветеринарные документы вы получите вместе с партией."}}, {"@type": "Question", "name": "Как проходит доставка?", "acceptedAnswer": {"@type": "Answer", "text": "Цыплят везут в вентилируемых коробках в машине с климат-контролем, в течение первых суток после вывода — в это время им ещё хватает питательных веществ из желтка. Время в пути зависит от региона."}}, {"@type": "Question", "name": "Как оплатить заказ?", "acceptedAnswer": {"@type": "Answer", "text": "Условия оплаты зависят от объёма и фиксируются в договоре. Менеджер расскажет о вариантах при оформлении."}}, {"@type": "Question", "name": "Что если часть цыплят не доедет?", "acceptedAnswer": {"@type": "Answer", "text": "При приёмке партия пересчитывается вместе с водителем и составляется акт. Условия гарантии сохранности прописаны в договоре."}}]}</script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cellipse cx='16' cy='17' rx='11' ry='14' fill='%23f4efe6'/%3E%3Ccircle cx='16' cy='19' r='6' fill='%23ffc93a'/%3E%3C/svg%3E" />
+  <script type="importmap">
+    { "imports": {
+        "three": "./vendor/three/build/three.module.min.js",
+        "three/addons/": "./vendor/three/jsm/"
+    } }
+  </script>
+</head>
+<body>
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <div id="loader" role="dialog" aria-modal="true" aria-labelledby="introBrand">
+    <div class="intro">
+      <svg class="intro-egg" viewBox="0 0 200 250" aria-hidden="true">
+        <defs>
+          <radialGradient id="ig-shell" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#fbf8f2"/><stop offset=".55" stop-color="#e9e1d4"/><stop offset="1" stop-color="#b9ad9b"/></radialGradient>
+          <radialGradient id="ig-in" cx="50%" cy="20%" r="80%"><stop offset="0" stop-color="#fff6e6"/><stop offset="1" stop-color="#d9ccb7"/></radialGradient>
+          <radialGradient id="ig-chick" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffe680"/><stop offset=".6" stop-color="#f6c234"/><stop offset="1" stop-color="#d89a12"/></radialGradient>
+          <radialGradient id="ig-glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffd27a" stop-opacity=".55"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+          <clipPath id="ig-inside"><path d="M100 18 C146 18 182 92 182 148 C182 200 146 232 100 232 C54 232 18 200 18 148 C18 92 54 18 100 18Z"/><rect x="0" y="-60" width="200" height="186"/></clipPath>
+          <clipPath id="ig-bottom"><polygon points="20,128 36,116 52,131 68,114 84,131 100,112 116,131 132,114 148,131 164,116 180,128 200,128 200,250 0,250 0,128"/></clipPath>
+          <clipPath id="ig-top"><polygon points="0,0 200,0 200,128 180,128 164,116 148,131 132,114 116,131 100,112 84,131 68,114 52,131 36,116 20,128 0,128"/></clipPath>
+        </defs>
+        <circle class="glow" cx="100" cy="125" r="110" fill="url(#ig-glow)"/>
+        <g clip-path="url(#ig-inside)"><g class="chick">
+          <ellipse cx="100" cy="160" rx="44" ry="40" fill="url(#ig-chick)"/>
+          <circle cx="100" cy="112" r="34" fill="url(#ig-chick)"/>
+          <path d="M92 86 q4 -16 10 -2 q5 -12 9 2" fill="#f6c234"/>
+          <g class="eyes"><ellipse cx="86" cy="108" rx="5" ry="6" fill="#16100a"/><ellipse cx="114" cy="108" rx="5" ry="6" fill="#16100a"/><circle cx="88" cy="106" r="1.6" fill="#fff"/><circle cx="116" cy="106" r="1.6" fill="#fff"/></g>
+          <path class="beak" d="M94 118 L100 128 L106 118 Z" fill="#ef9a3a"/>
+          <ellipse cx="78" cy="122" rx="5" ry="3" fill="#ff8f80" opacity=".45"/><ellipse cx="122" cy="122" rx="5" ry="3" fill="#ff8f80" opacity=".45"/>
+        </g></g>
+        <g class="shell-bottom" clip-path="url(#ig-bottom)"><path d="M100 18 C146 18 182 92 182 148 C182 200 146 232 100 232 C54 232 18 200 18 148 C18 92 54 18 100 18Z" fill="url(#ig-shell)"/></g>
+        <g class="shell-top" clip-path="url(#ig-top)"><path d="M100 18 C146 18 182 92 182 148 C182 200 146 232 100 232 C54 232 18 200 18 148 C18 92 54 18 100 18Z" fill="url(#ig-shell)"/><path d="M100 18 C146 18 182 92 182 148 C182 200 146 232 100 232 C54 232 18 200 18 148 C18 92 54 18 100 18Z" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="2"/></g>
+        <polyline class="crack" points="20,128 36,116 52,131 68,114 84,131 100,112 116,131 132,114 148,131 164,116 180,128" fill="none" stroke="#5a4630" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+        <!-- little shell chips that fly off when the lid pops -->
+        <g class="frags" fill="#eee6d9">
+          <polygon class="frag f1" points="60,118 70,112 68,124"/>
+          <polygon class="frag f2" points="128,116 140,112 136,124"/>
+          <polygon class="frag f3" points="98,110 106,106 106,116"/>
+          <polygon class="frag f4" points="40,120 48,116 46,126"/>
+        </g>
+        <g class="peep">
+          <rect x="132" y="40" width="62" height="30" rx="15" fill="#f6f2ea"/>
+          <path d="M142 68 l-8 12 l16 -10 z" fill="#f6f2ea"/>
+          <text x="163" y="60" text-anchor="middle" font-family="Manrope, Arial, sans-serif" font-weight="800" font-size="15" fill="#17130a">пи-пи!</text>
+        </g>
+      </svg>
+      <p class="intro-brand" id="introBrand">INKUBIO</p>
+      <p class="intro-status" aria-live="polite"><span id="introText">Согреваем инкубатор</span><b id="introPct">0%</b></p>
+      <div class="intro-bar" aria-hidden="true"><i id="introBar"></i></div>
+    </div>
+  </div>
+
+  <div id="iris" aria-hidden="true"></div>
+
+  <header class="top">
+    <a class="brand" href="#" id="toTop" aria-label="INKUBIO — в начало">
+      <svg viewBox="0 0 32 40" class="brand-mark" aria-hidden="true">
+        <path d="M16 1C8 1 2 14 2 24c0 8 6 15 14 15s14-7 14-15C30 14 24 1 16 1Z" fill="currentColor"/>
+        <path d="M4.5 22 9 18l3.5 4L16 18l3.5 4L23 18l4.5 4" fill="none" stroke="#0a0a0c" stroke-width="2.2" stroke-linejoin="round"/>
+      </svg>
+      <span>INKUBIO</span>
+    </a>
+    <div class="top-actions">
+      <button class="pill ghost" id="soundBtn" type="button" aria-pressed="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="mute" d="m16 9 5 6m0-6-5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span class="label">Звук</span>
+      </button>
+      <a class="pill solid" href="#about" data-order aria-label="Заказать цыплят"><span class="cta-long">Заказать цыплят</span><span class="cta-short">Заказать</span></a>
+    </div>
+  </header>
+
+  <nav id="rail" aria-label="Главы"><i id="railFill"></i></nav>
+  <button id="filmBar" class="film-bar" type="button" aria-label="Остановить фильм"><span class="stop" aria-hidden="true"></span><span class="label">Остановить</span><i><b id="filmProgress"></b></i></button>
+  <div id="counter" class="counter" aria-hidden="true"><b>01</b><span>/ 07</span><em>Чудо</em></div>
+
+  <!-- Fixed story overlays, driven by scroll position (data-show = fade-in start,end, fade-out start,end in vh) -->
+  <div class="stage">
+    <!-- giant outlined words drifting behind the story -->
+    <div class="ov bigword" aria-hidden="true" data-show="-10,-5,95,130" data-slide="0,130">ЧУДО</div>
+    <div class="ov bigword" aria-hidden="true" data-show="115,150,270,300" data-slide="115,300">КЛИМАТ</div>
+    <div class="ov bigword" aria-hidden="true" data-show="330,380,700,745" data-slide="320,750">21 ДЕНЬ</div>
+    <div class="ov bigword" aria-hidden="true" data-show="760,800,960,995" data-slide="750,1000">РОЖДЕНИЕ</div>
+    <div class="ov bigword" aria-hidden="true" data-show="1000,1040,1210,1248" data-slide="1000,1250">ПРИВЕТ</div>
+    <div class="ov bigword" aria-hidden="true" data-show="1265,1310,1760,1800" data-slide="1250,1800">В ПУТЬ</div>
+    <!-- 1 -->
+    <section class="ov ov-hero" data-show="-10,-5,70,115">
+      <p class="kicker intro-in" style="--d:1.4s">Инкубаторий INKUBIO</p>
+      <h1 class="display">Каждая большая жизнь начинается с&nbsp;маленького чуда</h1>
+      <div class="hero-actions intro-in" style="--d:2.4s">
+        <button class="skip film-btn" type="button" data-film><span class="play" aria-hidden="true"></span>Смотреть как фильм</button>
+        <a class="skip" href="#about" data-jump>Сразу к заказу <span aria-hidden="true">↓</span></a>
+      </div>
+    </section>
+    <div class="ov scroll-hint" data-show="-10,-5,8,40"><span class="intro-in" style="--d:2.6s">Прокрутите вниз</span><i></i></div>
+
+    <!-- 2 -->
+    <section class="ov ov-hero ov-metrics" data-show="135,165,272,298">
+      <p class="kicker">01 · Микроклимат</p>
+      <h2 class="h2">Всё под контролем — каждую секунду</h2>
+    </section>
+    <div class="hud" id="hud">
+      <svg id="hudLines" aria-hidden="true"></svg>
+      <article class="metric" data-show="150,172,270,296" data-anchor="-1.95,2.15,0" data-tip="-0.55,1.7,0.25">
+        <span class="metric-label">Температура</span>
+        <span class="metric-value"><b id="tempVal">37,5</b><small>°C</small></span>
+        <span class="metric-sub">точность ±0,1 °C</span>
+      </article>
+      <article class="metric" data-show="160,182,272,297" data-anchor="1.95,2.1,0" data-tip="0.6,1.6,0.25">
+        <span class="metric-label">Влажность</span>
+        <span class="metric-value"><b id="humVal">58</b><small>%</small></span>
+        <span class="metric-bar"><i id="humBar"></i></span>
+        <span class="metric-sub">диапазон 55–60 %</span>
+      </article>
+      <article class="metric" data-show="170,192,274,298" data-anchor="-2.05,0.15,0" data-tip="-0.72,0.6,0.25">
+        <span class="metric-label">Вентиляция</span>
+        <span class="metric-value"><svg class="fan" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><path d="M12 12c0-4 1-8 4-8s3 4-4 8Z"/><path d="M12 12c4 0 8 1 8 4s-4 3-8-4Z"/><path d="M12 12c0 4-1 8-4 8s-3-4 4-8Z"/><path d="M12 12c-4 0-8-1-8-4s4-3 8 4Z"/></g><circle cx="12" cy="12" r="1.6" fill="#0a0a0c"/></svg><b>Авто</b></span>
+        <span class="metric-sub">O₂ и CO₂ в норме</span>
+      </article>
+      <article class="metric" data-show="180,202,275,299" data-anchor="2.05,0.2,0" data-tip="0.74,0.65,0.25">
+        <span class="metric-label">Поворот яйца</span>
+        <span class="metric-value"><svg id="turnIcon" class="turn" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12.5" rx="5.5" ry="7.2" fill="currentColor"/></svg><b id="turnVal">0°</b></span>
+        <span class="metric-sub">автоматически, каждый час</span>
+      </article>
+    </div>
+
+    <!-- 3 -->
+    <section class="ov ov-left" data-show="350,370,405,425">
+      <p class="kicker">02 · Инкубатор</p>
+      <h2 class="h2">21 день тепла, покоя и&nbsp;заботы</h2>
+      <p class="lead">Заглянем внутрь — туда, где под светом овоскопа видно, как растёт новая жизнь.</p>
+    </section>
+    <section class="ov day-hud" data-show="492,514,735,752" aria-live="polite">
+      <p class="kicker">День</p>
+      <div class="day-num"><b id="dayNum">1</b><span>/ 21</span></div>
+      <h3 id="dayStage">Формирование эмбриона</h3>
+      <p id="dayDesc">Закладываются нервная система, сердце и глаза.</p>
+      <div class="day-track"><i id="dayBar"></i></div>
+      <div class="day-marks"><span data-d="1">1</span><span data-d="7">7</span><span data-d="14">14</span><span data-d="18">18</span><span data-d="21">21</span></div>
+    </section>
+
+    <!-- 4 -->
+    <section class="ov ov-left ov-top" data-show="768,790,870,895">
+      <p class="kicker">03 · Чудо рождения</p>
+      <h2 class="h2 small">Тук-тук… Кто-то спешит на свет</h2>
+    </section>
+    <section class="ov ov-center ov-low" data-show="958,975,1035,1065">
+      <h2 class="display glow">И вот начинается новая жизнь</h2>
+    </section>
+
+    <!-- 5 -->
+    <section class="ov ov-left ov-top" data-show="1070,1095,1225,1248">
+      <p class="kicker">04 · Знакомство</p>
+      <h2 class="h2">Привет, мир!</h2>
+      <p class="lead">Первые минуты жизни: любопытный взгляд, первые шаги и&nbsp;первое «пи-пи».</p>
+    </section>
+    <div class="ov hint-pill" data-show="1075,1100,1225,1248"><span class="dot"></span><span id="hint"></span></div>
+
+    <!-- 6 -->
+    <section class="ov line-hud" data-show="1265,1290,1622,1645">
+      <p class="kicker">05 · Новый дом</p>
+      <ol class="line-steps">
+        <li>Линия обработки</li>
+        <li>Сортировка</li>
+        <li>Упаковка в коробки</li>
+        <li>Доставка</li>
+      </ol>
+      <div class="line-count">
+        <div><b id="scanCount">0</b><span>проверено</span></div>
+        <div><b id="packCount">0</b><span>упаковано</span></div>
+      </div>
+    </section>
+    <section class="ov ov-center ov-high" data-show="1645,1690,1840,1890">
+      <h2 class="display dark">Мы создаём начало вашего успешного птицеводства</h2>
+    </section>
+  </div>
+
+  <div id="gateLabel" class="gate-label" aria-hidden="true">
+    <span class="ok">✓</span>
+    <div><b id="gateId">№ 001</b><span>Класс A · <em id="gateW">41 г</em></span></div>
+  </div>
+  <div id="bubble" class="bubble" aria-hidden="true">пи-пи!</div>
+  <nav class="msgr" id="msgr" aria-label="Написать нам">
+    <a class="call" data-tel href="tel:" aria-label="Позвонить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.2 15.2 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2Z" fill="currentColor"/></svg><span class="call-pop"><b data-phone-text></b><small class="call-status"></small></span></a>
+    <a class="tg" data-site="telegram" href="https://t.me/inkubio" target="_blank" rel="noopener" aria-label="Написать в Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 3.6 2.9 10.8c-1 .4-1 1.6.1 1.9l4.6 1.4 1.8 5.5c.3.8 1.3 1 1.9.4l2.6-2.5 4.8 3.5c.7.5 1.7.1 1.9-.8l3-14.9c.2-1.1-.9-2-2.1-1.7ZM9.8 14.1l8-6.6-6.3 7.7-.3 3.1-1.4-4.2Z" fill="currentColor"/></svg></a>
+    <a class="wa" data-site="whatsapp" href="https://wa.me/00000000000" target="_blank" rel="noopener" aria-label="Написать в WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2a9.7 9.7 0 0 0-8.4 14.6L2.3 21.8l5.1-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.7a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 5 5 0 0 0 1 2.6 11 11 0 0 0 4.3 3.8c1.6.7 2.2.7 3 .6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.6-.4Z" fill="currentColor"/></svg></a>
+  </nav>
+  <!-- phones: call bar at the bottom of the information part -->
+  <nav class="dock" id="dock" aria-label="Связаться с нами">
+    <a class="dock-call" data-tel href="tel:">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.2 15.2 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2Z" fill="currentColor"/></svg>
+      <span><b>Позвонить</b><small class="call-status"></small></span>
+    </a>
+    <a class="dock-ic tg" data-site="telegram" href="https://t.me/inkubio" target="_blank" rel="noopener" aria-label="Написать в Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 3.6 2.9 10.8c-1 .4-1 1.6.1 1.9l4.6 1.4 1.8 5.5c.3.8 1.3 1 1.9.4l2.6-2.5 4.8 3.5c.7.5 1.7.1 1.9-.8l3-14.9c.2-1.1-.9-2-2.1-1.7ZM9.8 14.1l8-6.6-6.3 7.7-.3 3.1-1.4-4.2Z" fill="currentColor"/></svg></a>
+    <a class="dock-ic wa" data-site="whatsapp" href="https://wa.me/00000000000" target="_blank" rel="noopener" aria-label="Написать в WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2a9.7 9.7 0 0 0-8.4 14.6L2.3 21.8l5.1-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.7a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 5 5 0 0 0 1 2.6 11 11 0 0 0 4.3 3.8c1.6.7 2.2.7 3 .6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.6-.4Z" fill="currentColor"/></svg></a>
+  </nav>
+  <div id="dip" aria-hidden="true"></div>
+  <div id="flash" aria-hidden="true"></div>
+
+  <div id="track" aria-hidden="true"></div>
+
+  <!-- 7 -->
+  <section id="about" class="about">
+    <div class="about-inner">
+      <div class="about-top">
+      <div class="about-head">
+        <svg viewBox="0 0 32 40" class="about-logo" aria-hidden="true">
+          <path d="M16 1C8 1 2 14 2 24c0 8 6 15 14 15s14-7 14-15C30 14 24 1 16 1Z" fill="#f4efe6"/>
+          <path d="M4.5 22 9 18l3.5 4L16 18l3.5 4L23 18l4.5 4" fill="none" stroke="#0a0a0c" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="16" cy="29" r="5" fill="#ffc93a"/>
+        </svg>
+        <p class="kicker">Инкубаторий</p>
+        <h2 class="about-title" data-letters>INKUBIO</h2>
+        <p class="lead">Полный цикл: от закладки яйца до доставки суточных цыплят в ваше хозяйство. Современные инкубаторы, ветеринарный контроль на каждом этапе и транспорт с климат-контролем.</p>
+        <a class="pill solid big magnetic" href="#order" data-order>Заказать цыплят</a>
+      </div>
+        <div class="finale" id="finale" aria-hidden="true"></div>
+      </div>
+      <section class="block aud reveal" aria-labelledby="audTitle">
+        <p class="kicker">Для кого</p>
+        <h3 id="audTitle" class="section-title">Для кого мы работаем</h3>
+        <div class="aud-grid">
+          <article class="aud-card" style="--i:0">
+            <span class="aud-ico"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 15 16 6l11 9v11H5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M13 26v-7h6v7" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+            <h4>Частные подворья</h4>
+            <p>Для тех, кто выращивает птицу для своей семьи. Поможем выбрать кросс и подскажем, как подготовиться к приезду цыплят.</p>
+            <ul><li>Небольшие партии</li><li>Понятные советы по уходу</li><li>Помощь с выбором кросса</li></ul>
+            <button class="pill ghost" type="button" data-order data-segment="Частные подворья">Обсудить заказ</button>
+          </article>
+          <article class="aud-card" style="--i:1">
+            <span class="aud-ico"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 26V13l7-5 7 5v13Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M18 26V16h10v10M8 26v-6h6v6M21 20h4" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+            <h4>Фермерские хозяйства</h4>
+            <p>Для ферм, которым нужен ровный, здоровый молодняк по графику. Планируем поставки вместе с вами под ваш оборот.</p>
+            <ul><li>Поставки по графику</li><li>Выбор из трёх кроссов</li><li>Документы на каждую партию</li></ul>
+            <button class="pill ghost" type="button" data-order data-segment="Фермерские хозяйства">Обсудить заказ</button>
+          </article>
+          <article class="aud-card" style="--i:2">
+            <span class="aud-ico"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 27V15l6 4v-4l6 4v-4l6 4V6h5v21Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 23h3M15 23h3M21 23h3" stroke="currentColor" stroke-width="2"/></svg></span>
+            <h4>Птицефабрики</h4>
+            <p>Для предприятий с промышленным циклом. Работаем с крупными партиями и согласуем вывод с планом посадки.</p>
+            <ul><li>Крупные партии</li><li>Согласование с планом посадки</li><li>Вакцинация в первый день</li></ul>
+            <button class="pill ghost" type="button" data-order data-segment="Птицефабрики">Обсудить заказ</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="block t21 reveal" aria-labelledby="t21Title">
+        <p class="kicker">Инкубация</p>
+        <h3 id="t21Title" class="section-title">21 день внутри яйца</h3>
+        <div class="t21-cells" role="tablist" aria-label="Дни инкубации">
+          <button type="button" role="tab" class="t21-cell" data-day="1" style="--i:1" aria-label="День 1"><span>1</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="2" style="--i:2" aria-label="День 2"><span>2</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="3" style="--i:3" aria-label="День 3"><span>3</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="4" style="--i:4" aria-label="День 4"><span>4</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="5" style="--i:5" aria-label="День 5"><span>5</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="6" style="--i:6" aria-label="День 6"><span>6</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="7" style="--i:7" aria-label="День 7"><span>7</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="8" style="--i:8" aria-label="День 8"><span>8</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="9" style="--i:9" aria-label="День 9"><span>9</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="10" style="--i:10" aria-label="День 10"><span>10</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="11" style="--i:11" aria-label="День 11"><span>11</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="12" style="--i:12" aria-label="День 12"><span>12</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="13" style="--i:13" aria-label="День 13"><span>13</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="14" style="--i:14" aria-label="День 14"><span>14</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="15" style="--i:15" aria-label="День 15"><span>15</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="16" style="--i:16" aria-label="День 16"><span>16</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="17" style="--i:17" aria-label="День 17"><span>17</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="18" style="--i:18" aria-label="День 18"><span>18</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="19" style="--i:19" aria-label="День 19"><span>19</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="20" style="--i:20" aria-label="День 20"><span>20</span></button>
+          <button type="button" role="tab" class="t21-cell" data-day="21" style="--i:21" aria-label="День 21"><span>21</span></button>
+        </div>
+        <div class="t21-card" aria-live="polite"><b class="t21-day" id="t21Day">День 1</b><h4 id="t21Head"></h4><p id="t21Text"></p></div>
+      </section>
+
+      <section class="hatches" id="hatches" hidden aria-labelledby="hatchesTitle">
+        <p class="kicker">Можно забронировать</p>
+        <h3 id="hatchesTitle" class="section-title">Ближайшие выводы</h3>
+        <div class="hatch-list" id="hatchList"></div>
+      </section>
+      <div class="marquee" aria-hidden="true"><div class="marquee-track">
+        <span>Ross 308</span><i></i><span>Cobb 500</span><i></i><span>Арбор Эйкерс</span><i></i><span>Ветеринарный контроль</span><i></i><span>Доставка с климат-контролем</span><i></i><span>Вакцинация в первый день</span><i></i>
+        <span>Ross 308</span><i></i><span>Cobb 500</span><i></i><span>Арбор Эйкерс</span><i></i><span>Ветеринарный контроль</span><i></i><span>Доставка с климат-контролем</span><i></i><span>Вакцинация в первый день</span><i></i>
+      </div></div>
+      <div class="stats" id="stats" hidden></div>
+
+      <section class="block breeds-x reveal" aria-labelledby="breedTitle">
+        <p class="kicker">Кроссы</p>
+        <h3 id="breedTitle" class="section-title">Какую породу выбрать</h3>
+        <div class="breed-grid">
+          <article class="breed-card" style="--i:0">
+            <h4>Ross 308</h4>
+            <p class="tag">Универсальный кросс для большинства хозяйств</p>
+            <ul><li>Быстрый и равномерный рост</li><li>Хорошая отдача корма</li><li>Один из самых распространённых в мире</li></ul>
+            <p class="best"><span>Кому подойдёт</span>Тем, кому нужен надёжный и предсказуемый результат</p>
+            <button class="pill solid" type="button" data-order data-breed="Ross 308">Выбрать эту породу</button>
+          </article>
+          <article class="breed-card" style="--i:1">
+            <h4>Cobb 500</h4>
+            <p class="tag">Ставка на эффективность корма</p>
+            <ul><li>Экономичное использование корма</li><li>Хорошо раскрывается при разных рационах</li><li>Плотная, мясистая тушка</li></ul>
+            <p class="best"><span>Кому подойдёт</span>Хозяйствам, где важна каждая затраченная единица корма</p>
+            <button class="pill solid" type="button" data-order data-breed="Cobb 500">Выбрать эту породу</button>
+          </article>
+          <article class="breed-card" style="--i:2">
+            <h4>Арбор Эйкерс</h4>
+            <p class="tag">Выносливый и неприхотливый</p>
+            <ul><li>Хорошо переносит разные условия</li><li>Стабильная сохранность поголовья</li><li>Спокойный нрав</li></ul>
+            <p class="best"><span>Кому подойдёт</span>Подворьям и фермам с непростыми условиями содержания</p>
+            <button class="pill solid" type="button" data-order data-breed="Арбор Эйкерс">Выбрать эту породу</button>
+          </article>
+        </div>
+      </section>
+
+      <!-- payback calculator: logic in js/calc.js -->
+      <section class="block calc reveal" id="calc" aria-labelledby="calcTitle">
+        <p class="kicker">Калькулятор</p>
+        <h3 id="calcTitle" class="section-title">Сколько принесёт ваша партия</h3>
+        <p class="calc-lead">Посчитайте корм, выход мяса и прибыль ещё до заказа. Цены впишите свои — всё считается сразу.</p>
+        <div class="calc-wrap">
+          <form class="calc-in" id="calcForm" autocomplete="off" onsubmit="return false">
+            <fieldset class="calc-breeds">
+              <legend>Кросс</legend>
+              <label><input type="radio" name="breed" value="Ross 308" checked><span>Ross 308</span></label>
+              <label><input type="radio" name="breed" value="Cobb 500"><span>Cobb 500</span></label>
+              <label><input type="radio" name="breed" value="Арбор Эйкерс"><span>Арбор Эйкерс</span></label>
+            </fieldset>
+            <div class="calc-range">
+              <label for="cQty">Цыплят в партии</label>
+              <input id="cQtyN" name="qtyN" type="number" min="10" max="1000000" step="10" value="500" inputmode="numeric" aria-label="Цыплят в партии, число">
+              <input id="cQty" name="qty" type="range" min="0" max="100" step="1" value="40">
+            </div>
+            <div class="calc-range">
+              <label for="cDays">Выращиваете до</label>
+              <output id="cDaysOut">42 дня</output>
+              <input id="cDays" name="days" type="range" min="28" max="56" step="1" value="42">
+              <div class="calc-ticks" aria-hidden="true"><span>28</span><span>35</span><span>42</span><span>49</span><span>56</span></div>
+            </div>
+            <fieldset class="calc-prices">
+              <legend>Ваши цены <small id="calcCur"></small></legend>
+              <label>Цыплёнок, за голову<input name="chick" type="text" inputmode="decimal" placeholder="—"></label>
+              <label>Корм, за кг<input name="feed" type="text" inputmode="decimal" placeholder="—"></label>
+              <label>Продажа, за кг<input name="sale" type="text" inputmode="decimal" placeholder="—"></label>
+              <label>Продаёте<select name="mode"><option value="live">живым весом</option><option value="carcass">тушкой</option></select></label>
+            </fieldset>
+            <details class="calc-more">
+              <summary>Точная настройка</summary>
+              <div class="calc-more-grid">
+                <label>Сохранность, %<input name="surv" type="text" inputmode="decimal" placeholder="95"></label>
+                <label>Живой вес, кг<input name="weight" type="text" inputmode="decimal" placeholder="авто"></label>
+                <label>Конверсия корма<input name="fcr" type="text" inputmode="decimal" placeholder="авто"></label>
+                <label>Прочее на голову<input name="other" type="text" inputmode="decimal" placeholder="0"></label>
+              </div>
+              <p class="calc-hint">Прочее — вакцины, подстилка, отопление, свет. Конверсия — сколько кг корма уходит на 1 кг привеса.</p>
+            </details>
+          </form>
+
+          <div class="calc-out" aria-live="polite">
+            <div class="calc-big" id="calcBig">
+              <span class="calc-big-label" id="calcBigLabel">Прибыль с партии</span>
+              <b id="calcProfit">—</b>
+              <span class="calc-big-sub" id="calcProfitSub">Впишите цены слева — посчитаем расходы и прибыль</span>
+            </div>
+            <div class="calc-stats">
+              <div><b id="cAlive">—</b><span>голов к убою</span></div>
+              <div><b id="cWeight">—</b><span id="cWeightLbl">кг живого веса</span></div>
+              <div><b id="cFeed">—</b><span id="cFeedLbl">кг корма</span></div>
+              <div><b id="cPerKg">—</b><span>себестоимость 1 кг</span></div>
+            </div>
+            <div class="calc-bars" id="calcBars" hidden>
+              <div class="cb-row"><span>Расходы</span><div class="cb-track"><i class="cb-chick" id="cbChick"></i><i class="cb-feed" id="cbFeed"></i><i class="cb-other" id="cbOther"></i></div><b id="cbCost"></b></div>
+              <div class="cb-row"><span>Выручка</span><div class="cb-track"><i class="cb-rev" id="cbRev"></i></div><b id="cbRevV"></b></div>
+              <p class="cb-legend"><i class="cb-chick"></i>цыплята <i class="cb-feed"></i>корм <i class="cb-other"></i>прочее</p>
+            </div>
+            <button type="button" class="pill solid calc-order" id="calcOrder" data-order data-breed="Ross 308" data-qty="500">Заказать 500 цыплят Ross 308</button>
+            <p class="calc-note">Ориентир на хорошие условия содержания и полнорационный корм. Реальный результат зависит от корма, климата и ухода. Вес и конверсию можно поправить в «Точной настройке».</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="block why reveal" aria-labelledby="whyTitle">
+        <p class="kicker">Почему INKUBIO</p>
+        <h3 id="whyTitle" class="section-title">Каждый этап — под контролем</h3>
+        <div class="why-grid">
+          <article class="why-item" style="--i:0"><b>01</b><h4>Точный климат в инкубаторах</h4><p>Температура, влажность и поворот яиц под постоянным контролем на каждом этапе инкубации.</p></article>
+          <article class="why-item" style="--i:1"><b>02</b><h4>Овоскопирование и отбор</h4><p>Просвечиваем яйца во время инкубации и убираем неразвивающиеся. После вывода отбираем активных, здоровых цыплят.</p></article>
+          <article class="why-item" style="--i:2"><b>03</b><h4>Вакцинация в первый день</h4><p>Цыплята проходят вакцинацию прямо на линии, до отправки к вам.</p></article>
+          <article class="why-item" style="--i:3"><b>04</b><h4>Вентилируемые коробки</h4><p>Цыплята едут в специальных коробках с отверстиями для воздуха — без тесноты и перегрева.</p></article>
+          <article class="why-item" style="--i:4"><b>05</b><h4>Доставка в первые сутки</h4><p>Везём цыплят в первые сутки после вывода, в машинах с поддержанием температуры.</p></article>
+          <article class="why-item" style="--i:5"><b>06</b><h4>Документы с каждой партией</h4><p>К каждой партии прикладываем сопроводительные документы. Вы знаете, кого и откуда получили.</p></article>
+        </div>
+      </section>
+
+      <!-- photos: filled from SITE.photos in js/config.js; hidden while the list is empty -->
+      <section class="block gallery reveal" id="gallery" hidden aria-labelledby="galleryTitle">
+        <p class="kicker">Без 3D — как есть</p>
+        <h3 id="galleryTitle" class="section-title">Как мы работаем</h3>
+        <div class="gallery-grid" id="galleryGrid"></div>
+      </section>
+
+      <!-- reviews: filled from SITE.reviews in js/config.js; hidden while the list is empty -->
+      <section class="block reviews reveal" id="reviews" hidden aria-labelledby="reviewsTitle">
+        <div class="reviews-head">
+          <div>
+            <p class="kicker">Отзывы</p>
+            <h3 id="reviewsTitle" class="section-title">Что говорят наши клиенты</h3>
+          </div>
+          <div class="reviews-nav" aria-hidden="true">
+            <button type="button" class="rv-arrow" id="rvPrev" tabindex="-1" aria-label="Предыдущие отзывы">←</button>
+            <button type="button" class="rv-arrow" id="rvNext" tabindex="-1" aria-label="Следующие отзывы">→</button>
+          </div>
+        </div>
+        <div class="reviews-track" id="reviewsTrack" tabindex="0" aria-label="Отзывы, прокручиваются вбок"></div>
+        <div class="reviews-foot">
+          <button type="button" class="pill" data-order>Заказать цыплят</button>
+          <a class="pill ghost" id="reviewLeave" hidden target="_blank" rel="noopener">Оставить отзыв</a>
+        </div>
+      </section>
+
+      <div class="about-grid">
+        <div class="card">
+          <h3>Производство</h3>
+          <ul class="facts">
+            <li>Инкубаторы с точностью климата ±0,1 °C</li>
+            <li>Линия сортировки и вакцинации суточных цыплят</li>
+            <li>Собственный автопарк с климат-контролем</li>
+            <li>Ветеринарные сертификаты на каждую партию</li>
+          </ul>
+        </div>
+        <div class="card contacts">
+          <h3>Контакты</h3>
+          <a href="tel:+00000000000" data-site="phone">+0 (000) 000-00-00</a>
+          <a href="mailto:info@inkubio.example" data-site="email">info@inkubio.example</a>
+          <p data-site="address">Адрес инкубатория — укажите здесь</p>
+          <p class="muted" data-site="hours">Пн–Сб, 8:00–18:00</p>
+          <div class="msgr-row">
+            <a class="pill ghost tg" data-site="telegram" href="https://t.me/inkubio" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 3.6 2.9 10.8c-1 .4-1 1.6.1 1.9l4.6 1.4 1.8 5.5c.3.8 1.3 1 1.9.4l2.6-2.5 4.8 3.5c.7.5 1.7.1 1.9-.8l3-14.9c.2-1.1-.9-2-2.1-1.7ZM9.8 14.1l8-6.6-6.3 7.7-.3 3.1-1.4-4.2Z" fill="currentColor"/></svg><span>Telegram</span></a>
+            <a class="pill ghost wa" data-site="whatsapp" href="https://wa.me/00000000000" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2a9.7 9.7 0 0 0-8.4 14.6L2.3 21.8l5.1-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.7a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 5 5 0 0 0 1 2.6 11 11 0 0 0 4.3 3.8c1.6.7 2.2.7 3 .6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.6-.4Z" fill="currentColor"/></svg><span>WhatsApp</span></a>
+          </div>
+        </div>
+      </div>
+
+      <section class="delivery" aria-labelledby="deliveryTitle">
+        <p class="kicker">Путь до вашего хозяйства</p>
+        <h3 id="deliveryTitle" class="section-title">Как мы доставляем</h3>
+        <ol class="steps">
+          <li><b>01</b><h4>Вывод</h4><p>Цыплята появляются на свет в выводных шкафах и обсыхают.</p></li>
+          <li><b>02</b><h4>Отбор и вакцинация</h4><p>Каждого проверяют, сортируют по классу и вакцинируют.</p></li>
+          <li><b>03</b><h4>Упаковка</h4><p>Вентилируемые коробки, подстилка, ровная плотность посадки.</p></li>
+          <li><b>04</b><h4>Дорога</h4><p>Машина с климат-контролем, в первые сутки после вывода.</p></li>
+          <li><b>05</b><h4>Приёмка</h4><p>Пересчёт с водителем, акт, документы на партию.</p></li>
+        </ol>
+      </section>
+
+      <!-- delivery map: zones and towns from SITE.deliveryMap in js/config.js, logic in js/dmap.js; hidden while empty -->
+      <section class="block dmap reveal" id="dmap" hidden aria-labelledby="dmapTitle">
+        <p class="kicker">География</p>
+        <h3 id="dmapTitle" class="section-title">Куда мы возим цыплят</h3>
+        <div class="dmap-wrap">
+          <div class="dmap-stage">
+            <svg id="dmapSvg" viewBox="-500 -500 1000 1000" role="img" aria-label="Карта зон доставки"></svg>
+          </div>
+          <aside class="dmap-side">
+            <label class="dmap-search">Проверьте свой город
+              <input id="dmapInput" type="search" list="dmapList" placeholder="Начните вводить название" autocomplete="off">
+              <datalist id="dmapList"></datalist>
+            </label>
+            <div class="dmap-card" id="dmapCard" aria-live="polite">
+              <p class="dmap-empty">Выберите точку на карте или найдите свой город — покажем расстояние, время в пути и условия доставки.</p>
+            </div>
+            <ul class="dmap-zones" id="dmapZones"></ul>
+          </aside>
+        </div>
+      </section>
+
+      <section class="block care reveal" aria-labelledby="careTitleH">
+        <p class="kicker">Памятка</p>
+        <h3 id="careTitleH" class="section-title">Первая неделя цыплёнка</h3>
+        <div class="care-wrap">
+          <div class="care-tabs" role="tablist" aria-label="Дни">
+            <button type="button" role="tab" class="care-tab on" data-care="0" aria-selected="true">День 0</button>
+            <button type="button" role="tab" class="care-tab" data-care="1" aria-selected="false">Дни 1–2</button>
+            <button type="button" role="tab" class="care-tab" data-care="2" aria-selected="false">Дни 3–4</button>
+            <button type="button" role="tab" class="care-tab" data-care="3" aria-selected="false">Дни 5–7</button>
+            <button type="button" role="tab" class="care-tab" data-care="4" aria-selected="false">Каждый день</button>
+          </div>
+          <div class="care-card" aria-live="polite">
+            <div class="thermo" aria-hidden="true"><div class="thermo-tube"><i id="thermoFill"></i></div><div class="thermo-bulb"></div></div>
+            <div class="care-body"><b id="careTemp">32–34 °C</b><span class="care-note">ориентир на уровне цыплят</span><h4 id="careHead">Встреча цыплят</h4><p id="careText">Прогрейте помещение заранее: на уровне цыплят около 32–34 °C. Сухая чистая подстилка, свежая вода комнатной температуры и стартовый корм — сразу.</p></div>
+          </div>
+          <div class="checklist">
+            <div class="ring"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19" class="track"/><circle cx="22" cy="22" r="19" class="prog" id="ringProg"/></svg><b id="ringText">0/5</b></div>
+            <h4>Готово к приезду?</h4>
+            <ul><li><label><input type="checkbox" data-check="0" /> <span>Брудер прогрет заранее</span></label></li><li><label><input type="checkbox" data-check="1" /> <span>Сухая чистая подстилка</span></label></li><li><label><input type="checkbox" data-check="2" /> <span>Поилки с водой комнатной температуры</span></label></li><li><label><input type="checkbox" data-check="3" /> <span>Стартовый корм</span></label></li><li><label><input type="checkbox" data-check="4" /> <span>Термометр на уровне цыплят</span></label></li></ul>
+            <button class="pill solid ready-cta" type="button" data-order hidden>Всё готово — заказать</button>
+          </div>
+        </div>
+        <p class="care-disclaimer">Общие рекомендации. Точный режим для вашего кросса и помещения подскажет ветеринар или наш менеджер.</p>
+      </section>
+
+      <section class="block facts reveal" aria-labelledby="factsTitle">
+        <p class="kicker">Знаете ли вы?</p>
+        <h3 id="factsTitle" class="section-title">Удивительное внутри яйца</h3>
+        <div class="fact-grid">
+          <button type="button" class="fact" style="--i:0" aria-pressed="false">
+            <span class="fact-in"><span class="front"><b>21</b><span>Три недели до встречи</span><i aria-hidden="true">↻</i></span><span class="back">Куриное яйцо инкубируется около 21 дня. За это время из одной клетки формируется цыплёнок, готовый к жизни.</span></span>
+          </button>
+          <button type="button" class="fact" style="--i:1" aria-pressed="false">
+            <span class="fact-in"><span class="front"><b>7000+</b><span>Скорлупа умеет дышать</span><i aria-hidden="true">↻</i></span><span class="back">В скорлупе от 7 до 17 тысяч пор. Через них внутрь поступает кислород, а наружу выходят углекислый газ и влага.</span></span>
+          </button>
+          <button type="button" class="fact" style="--i:2" aria-pressed="false">
+            <span class="fact-in"><span class="front"><b>19–20</b><span>Первый вдох — внутри яйца</span><i aria-hidden="true">↻</i></span><span class="back">Примерно на 19–20-й день цыплёнок прокалывает оболочку воздушной камеры и впервые дышит лёгкими, ещё не разбив скорлупу.</span></span>
+          </button>
+          <button type="button" class="fact" style="--i:3" aria-pressed="false">
+            <span class="fact-in"><span class="front"><b>▲</b><span>Яйцевой зуб</span><i aria-hidden="true">↻</i></span><span class="back">На кончике клюва есть маленький роговой бугорок. Им цыплёнок пробивает скорлупу, а вскоре после вылупления бугорок отпадает.</span></span>
+          </button>
+          <button type="button" class="fact" style="--i:4" aria-pressed="false">
+            <span class="fact-in"><span class="front"><b>1–2</b><span>Запас еды с собой</span><i aria-hidden="true">↻</i></span><span class="back">Перед вылуплением цыплёнок втягивает остаток желтка в брюшко. Этот запас поддерживает его в первые сутки-двое жизни.</span></span>
+          </button>
+          <button type="button" class="fact" style="--i:5" aria-pressed="false">
+            <span class="fact-in"><span class="front"><b>♪</b><span>Голос раньше рождения</span><i aria-hidden="true">↻</i></span><span class="back">Незадолго до вылупления цыплята уже слышат звуки снаружи и пищат прямо в яйце.</span></span>
+          </button>
+          <button type="button" class="fact" style="--i:6" aria-pressed="false">
+            <span class="fact-in"><span class="front"><b>18</b><span>Зачем поворачивают яйца</span><i aria-hidden="true">↻</i></span><span class="back">Регулярный поворот не даёт зародышу прилипнуть к оболочке. Обычно яйца переворачивают примерно до 18-го дня инкубации.</span></span>
+          </button>
+          <button type="button" class="fact" style="--i:7" aria-pressed="false">
+            <span class="fact-in"><span class="front"><b>3</b><span>Влажность перед выводом</span><i aria-hidden="true">↻</i></span><span class="back">В последние дни инкубации влажность повышают. Так оболочки не пересыхают, и цыплёнку легче выбраться из скорлупы.</span></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="faq" aria-labelledby="faqTitle">
+        <p class="kicker">Вопросы</p>
+        <h3 id="faqTitle" class="section-title">Частые вопросы</h3>
+        <div class="faq-list">
+          <details><summary>Какая минимальная партия?</summary><p>Минимальный объём зависит от породы и региона доставки — менеджер назовёт его при первом звонке. Небольшие хозяйства тоже обслуживаем.</p></details>
+          <details><summary>Как подготовить помещение к приезду цыплят?</summary><p>За сутки прогрейте брудер: в первые дни под источником тепла нужно 32–34 °C, затем температуру снижают постепенно. Застелите чистую сухую подстилку, поставьте поилки с водой комнатной температуры и корм для стартового периода. Подробную памятку пришлём вместе с подтверждением заказа.</p></details>
+          <details><summary>Цыплята вакцинированы?</summary><p>Да, вакцинация проводится в первый день жизни на нашей линии, до упаковки. Схему вакцинации и ветеринарные документы вы получите вместе с партией.</p></details>
+          <details><summary>Как проходит доставка?</summary><p>Цыплят везут в вентилируемых коробках в машине с климат-контролем, в течение первых суток после вывода — в это время им ещё хватает питательных веществ из желтка. Время в пути зависит от региона.</p></details>
+          <details><summary>Как оплатить заказ?</summary><p>Условия оплаты зависят от объёма и фиксируются в договоре. Менеджер расскажет о вариантах при оформлении.</p></details>
+          <details><summary>Что если часть цыплят не доедет?</summary><p>При приёмке партия пересчитывается вместе с водителем и составляется акт. Условия гарантии сохранности прописаны в договоре.</p></details>
+        </div>
+      </section>
+
+      <section class="block closing reveal" aria-labelledby="closingTitle">
+        <div class="closing-main">
+          <p class="kicker">Следующий шаг</p>
+          <h3 id="closingTitle" class="closing-title">Подберём кросс и партию под ваше хозяйство</h3>
+          <p class="lead">Оставьте заявку — расскажем о ближайших выводах, условиях доставки и поможем подготовиться к посадке.</p>
+          <div class="closing-actions">
+            <a class="pill solid big magnetic" href="#order" data-order>Оставить заявку</a>
+            <a class="pill ghost" data-site="phone" href="tel:+00000000000">+0 (000) 000-00-00</a>
+          </div>
+        </div>
+        <div class="closing-list">
+          <h4>С каждой партией вы получаете</h4>
+          <ul><li>Ветеринарные документы</li><li>Схему вакцинации</li><li>Акт приёмки</li><li>Памятку по первой неделе</li></ul>
+        </div>
+      </section>
+    </div>
+    <footer class="foot">
+      <span>© 2026 INKUBIO</span>
+      <span class="muted">Каждая большая жизнь начинается с маленького чуда</span>
+    </footer>
+  </section>
+
+  <dialog id="orderDialog" aria-labelledby="orderTitle">
+    <form id="orderForm" action="/api/order" method="post" novalidate>
+      <button class="close" id="orderClose" type="button" aria-label="Закрыть">×</button>
+      <p class="kicker">Заявка</p>
+      <h3 id="orderTitle">Заказать цыплят</h3>
+      <label>Ваше имя<input name="name" required minlength="2" maxlength="100" autocomplete="name" /></label>
+      <label>Телефон<input name="phone" type="tel" required maxlength="40" autocomplete="tel" inputmode="tel" placeholder="+0 000 000-00-00" /></label>
+      <div class="row">
+        <label>Порода
+          <select name="breed">
+            <option>Ross 308</option>
+            <option>Cobb 500</option>
+            <option>Арбор Эйкерс</option>
+          </select>
+        </label>
+        <label>Количество<input name="qty" type="number" min="1" max="1000000" step="1" value="500" required /></label>
+      </div>
+      <label>Желаемая дата<input name="date" type="date" /></label>
+      <p class="estimate" id="estimate" hidden></p>
+      <p class="order-city" id="orderCity" hidden>Доставка: <b></b><button type="button" aria-label="Убрать город доставки">×</button></p>
+      <label class="consent"><input type="checkbox" name="consent" required /> <span>Согласен на <a href="privacy.html" target="_blank" rel="noopener">обработку персональных данных</a> для связи по заявке</span></label>
+      <input type="hidden" name="segment" />
+      <input type="hidden" name="city" />
+      <label class="hp" aria-hidden="true">Сайт<input name="website" tabindex="-1" autocomplete="off" /></label>
+      <button class="pill solid big" type="submit">Отправить заявку</button>
+      <p class="sent-msg" role="status">Спасибо! Заявка отправлена — мы свяжемся с вами в ближайшее время.</p>
+      <p class="err-msg" role="alert" id="orderError"></p>
+      <p class="alt">Удобнее написать? <a data-site="telegram" href="https://t.me/inkubio" target="_blank" rel="noopener">Telegram</a> · <a data-site="whatsapp" href="https://wa.me/00000000000" target="_blank" rel="noopener">WhatsApp</a></p>
+    </form>
+  </dialog>
+
+  <noscript><p class="noscript">Для 3D-истории нужен JavaScript.</p></noscript>
+  <script>
+    // Safety net: if the 3D story can't start (old browser, WebGL off), show the information and keep ordering possible.
+    (function () {
+      function plain() {
+        if (document.body.classList.contains('ready') && window.__appOk) return;
+        document.body.classList.add('ready', 'no3d');
+        var d = document.getElementById('orderDialog');
+        document.querySelectorAll('[data-order]').forEach(function (b) {
+          b.addEventListener('click', function (e) { e.preventDefault(); d.showModal ? d.showModal() : d.setAttribute('open', ''); });
+        });
+        document.getElementById('orderClose').addEventListener('click', function () { d.close ? d.close() : d.removeAttribute('open'); });
+        var f = document.getElementById('orderForm');
+        f.addEventListener('submit', function (e) {
+          e.preventDefault();
+          if (!f.reportValidity()) return;
+          var data = {}; new FormData(f).forEach(function (v, k) { data[k] = v; }); data.qty = Number(data.qty);
+          fetch(f.action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+            .then(function (r) { return r.json(); })
+            .then(function (o) { if (o.ok) f.classList.add('sent'); else throw 0; })
+            .catch(function () { var er = document.getElementById('orderError'); er.textContent = 'Не удалось отправить заявку. Позвоните нам.'; er.classList.add('on'); });
+        });
+      }
+      var gl = null;
+      try { gl = document.createElement('canvas').getContext('webgl2'); } catch (e) {}
+      if (!gl || !HTMLScriptElement.supports || !HTMLScriptElement.supports('importmap')) document.addEventListener('DOMContentLoaded', plain);
+      else setTimeout(function () { if (!window.__appOk) plain(); }, 15000);
+    })();
+  </script>
+  <dialog id="lightbox" class="lightbox" aria-label="Фото">
+    <figure class="lb-fig">
+      <img id="lbImg" alt="">
+      <figcaption id="lbCap"></figcaption>
+    </figure>
+    <button type="button" class="lb-btn lb-prev" id="lbPrev" aria-label="Предыдущее фото">←</button>
+    <button type="button" class="lb-btn lb-next" id="lbNext" aria-label="Следующее фото">→</button>
+    <button type="button" class="lb-btn lb-close" id="lbClose" aria-label="Закрыть">×</button>
+    <span class="lb-count" id="lbCount"></span>
+  </dialog>
+
+  <script type="module" src="js/proof.js"></script>
+  <script type="module" src="js/calc.js"></script>
+  <script type="module" src="js/dmap.js"></script>
+  <script type="module" src="js/contact.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

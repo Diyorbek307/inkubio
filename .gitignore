@@ -1,0 +1,9 @@
+node_modules/
+.env
+orders.csv
+ссылка на сайт.txt
+
+# не часть сайта
+promo/
+.claude/
+*.log

@@ -1,0 +1,16 @@
+__DOMAIN__ {
+	# HTTPS certificate is issued and renewed automatically
+	reverse_proxy 127.0.0.1:3000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	log {
+		output file /var/log/caddy/inkubio.log {
+			roll_size 10mb
+			roll_keep 3
+		}
+	}
+}

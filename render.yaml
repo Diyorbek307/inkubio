@@ -1,0 +1,23 @@
+# Render.com Blueprint: New → Blueprint → этот репозиторий. Бесплатный план.
+# Значения с sync: false Render спросит при создании (их вписываете вы, в репозиторий они не попадают).
+services:
+  - type: web
+    name: inkubio
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /robots.txt
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: TRUST_PROXY
+        value: render
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
