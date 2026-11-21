@@ -322,7 +322,8 @@ export function createIncubator() {
 
   /* eggs and cups */
   const cupMat = new THREE.MeshStandardMaterial({ color: '#59626b', roughness: 0.45, metalness: 0.5 });
-  const eggGeo = new THREE.LatheGeometry(eggProfile(40), 40);
+  // 146 small eggs on the trays: a light mesh each (it was 3200 triangles per egg — a third of the whole frame)
+  const eggGeo = new THREE.LatheGeometry(eggProfile(16), 22);
   const { bumpTex, roughTex } = shellMaps();
   const eggMat = std({ color: '#e9e0d2', roughness: 0.8, roughnessMap: roughTex, bumpMap: bumpTex, bumpScale: 1.2, envMapIntensity: 0.35 });
   const eggLit = new THREE.Color('#e9e0d2'), eggDim = new THREE.Color('#7d756a');
