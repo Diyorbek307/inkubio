@@ -3,6 +3,7 @@ import { std } from './mat.js';
 import { createChick, createPose } from './chick.js';
 import { range, kf, easeIn, easeOut, lerp, bump, rng } from './util.js';
 import { drawLogo } from './logo.js';
+import { createTruck } from './truck.js';
 const L = (s) => (window.I18N ? window.I18N.t(s) : s); // texts painted on the model, in the page language
 
 /*
@@ -136,6 +137,61 @@ function hazardTexture(rx, ry) {
   }, { rx, ry });
 }
 
+// wooden pallet seen from above/side: deck boards with gaps and nail heads
+function palletTexture() {
+  return canvasTex(256, 128, (x, W, H) => {
+    x.fillStyle = '#3d2b1a';
+    x.fillRect(0, 0, W, H);
+    const r = rng(17);
+    for (let i = 0; i < 7; i++) {
+      const y = 4 + i * 17.5;
+      const base = 150 + r() * 30;
+      x.fillStyle = `rgb(${base + 30},${base - 5},${base - 55})`;
+      x.fillRect(0, y, W, 13);
+      for (let k = 0; k < 40; k++) { x.fillStyle = `rgba(90,60,30,${r() * 0.25})`; x.fillRect(r() * W, y + r() * 13, 10 + r() * 50, 1); }
+      x.fillStyle = 'rgba(40,40,40,0.8)';
+      for (const nx of [10, W / 2, W - 12]) { x.fillRect(nx, y + 4, 2, 2); x.fillRect(nx, y + 8, 2, 2); }
+    }
+  });
+}
+// cartons on the racks: printed side with a white shipping label and barcode, a taped top
+function cartonTexture() {
+  return canvasTex(256, 256, (x, W, H) => {
+    kraft(x, W, H, 21);
+    tape(x, W / 2 - 18, 0, 36, H * 0.2);
+    drawLogo(x, 18, 70, 56);
+    x.fillStyle = '#2f1f12';
+    x.font = '800 30px Manrope, sans-serif';
+    x.fillText('INKUBIO', 66, 110);
+    x.font = '700 14px Manrope, sans-serif';
+    x.fillText(L('ЖИВЫЕ ЦЫПЛЯТА · ОСТОРОЖНО'), 66, 130, 170);
+    // shipping label
+    x.fillStyle = '#f7f5ef';
+    x.fillRect(132, 156, 104, 76);
+    x.fillStyle = 'rgba(0,0,0,0.12)';
+    x.fillRect(132, 230, 104, 2);
+    x.fillStyle = '#1d1d1d';
+    const r = rng(8);
+    for (let bx = 140; bx < 228; bx += 1 + Math.floor(r() * 3)) { const w = 1 + Math.floor(r() * 2); x.fillRect(bx, 186, w, 30); bx += w; }
+    x.fillRect(140, 164, 60, 5);
+    x.fillRect(140, 173, 40, 4);
+    x.font = '700 9px Manrope, sans-serif';
+    x.fillText('4 780000 12 3', 150, 226);
+    // this way up
+    x.strokeStyle = '#2f1f12';
+    x.lineWidth = 3;
+    for (const ax of [30, 46]) { x.beginPath(); x.moveTo(ax, 232); x.lineTo(ax, 190); x.moveTo(ax - 6, 199); x.lineTo(ax, 190); x.lineTo(ax + 6, 199); x.stroke(); }
+  });
+}
+function cartonTopTexture() {
+  return canvasTex(256, 256, (x, W, H) => {
+    kraft(x, W, H, 27);
+    x.fillStyle = 'rgba(70,45,20,0.35)';
+    x.fillRect(0, H / 2 - 1, W, 2); // where the flaps meet
+    tape(x, 0, H / 2 - 22, W, 44);
+  });
+}
+
 /*
  Steel-framed hangar: back wall at z = -15 (x from -40 to 46), end wall with an open gate at x = 46,
  roof at y = 13. Floor level y = -2.6.
@@ -155,7 +211,7 @@ function buildHall(g) {
 
   // floor
   const concrete = concreteTexture();
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.62, roughnessMap: concrete, envMapIntensity: 0.9 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.42, roughnessMap: concrete, envMapIntensity: 1.1 }));
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = FY;
   floor.receiveShadow = true;
@@ -270,14 +326,16 @@ function buildHall(g) {
   for (const x0 of colXs.slice(0, -1)) for (let b = 0; b < 2; b++) bays.push(x0 + 1.1 + b * (BAY + 0.6));
   const upright = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 7.3, 0.12), new THREE.MeshStandardMaterial({ color: '#2f5d9a', roughness: 0.5, metalness: 0.3 }), bays.length * 4);
   const beam = new THREE.InstancedMesh(new THREE.BoxGeometry(BAY, 0.16, 0.08), new THREE.MeshStandardMaterial({ color: '#e8772e', roughness: 0.45, metalness: 0.2 }), bays.length * LEVELS.length * 2);
-  const pallet = new THREE.InstancedMesh(new THREE.BoxGeometry(BAY - 0.25, 0.16, 1.1), new THREE.MeshStandardMaterial({ color: '#b48a5a', roughness: 0.9 }), bays.length * LEVELS.length);
-  const cartonTex = canvasTex(256, 256, (x, w) => {
-    x.fillStyle = '#c99a62'; x.fillRect(0, 0, w, w);
-    x.fillStyle = 'rgba(120,80,40,0.25)'; x.fillRect(0, w * 0.46, w, w * 0.08);
-    drawLogo(x, 20, 20, 64);
-    x.fillStyle = '#3a2717'; x.font = '800 30px Manrope, sans-serif'; x.fillText('INKUBIO', 78, 64);
-  });
-  const carton = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map: cartonTex, roughness: 0.9 }), bays.length * LEVELS.length * 4);
+  const palletMat = new THREE.MeshStandardMaterial({ map: palletTexture(), roughness: 0.92 });
+  const pallet = new THREE.InstancedMesh(new THREE.BoxGeometry(BAY - 0.25, 0.16, 1.1), palletMat, bays.length * LEVELS.length);
+  // printed sides, taped top (BoxGeometry face order: +x, -x, +y, -y, +z, -z)
+  const cSide = new THREE.MeshStandardMaterial({ map: cartonTexture(), roughness: 0.86 });
+  const cTop = new THREE.MeshStandardMaterial({ map: cartonTopTexture(), roughness: 0.8 });
+  const cartonMat = [cSide, cSide, cTop, cTop, cSide, cSide];
+  const carton = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), cartonMat, bays.length * LEVELS.length * 4);
+  const wrapMat = new THREE.MeshStandardMaterial({ color: '#eef4f8', roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.12, depthWrite: false });
+  const wrap = new THREE.InstancedMesh(new THREE.BoxGeometry(BAY - 0.2, 1.78, 1.12), wrapMat, bays.length * LEVELS.length);
+  let iw = 0;
   const rr = rng(31);
   let iu = 0, ib = 0, ip = 0, ic = 0;
   const tint = new THREE.Color();
@@ -286,21 +344,44 @@ function buildHall(g) {
     for (const y of LEVELS) {
       for (const z of [RZ0, RZ1]) beam.setMatrixAt(ib++, m4.makeTranslation(bx + BAY / 2, y, z));
       pallet.setMatrixAt(ip++, m4.makeTranslation(bx + BAY / 2, y + 0.16, (RZ0 + RZ1) / 2));
-      // a few cartons on each pallet, stacked a little unevenly
-      const full = rr();
+      // pallets of cartons, two layers of two, a little uneven; a few half-picked or empty
+      const fill = rr();
+      const layers = fill < 0.07 ? 0 : fill < 0.2 ? 1 : 2;
+      const ch = 0.8 + rr() * 0.08;
       for (let c = 0; c < 4; c++) {
-        const s = full < 0.12 ? 0.0001 : 1;
-        const cx = bx + 0.25 + (c % 2) * 1.12 + 0.52, cy = y + 0.24 + 0.46 + (c > 1 && rr() < 0.6 ? 0.92 : 0), cz = (RZ0 + RZ1) / 2;
-        const h = c > 1 && cy < y + 1 ? 0.0001 : s;
-        m4.compose(new THREE.Vector3(cx + (rr() - 0.5) * 0.08, cy, cz + (rr() - 0.5) * 0.08), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (rr() - 0.5) * 0.06), new THREE.Vector3(1.04 * h, 0.9 * h, 1.0 * h));
+        const layer = c > 1 ? 1 : 0;
+        const k = layer < layers ? 1 : 0.0001;
+        const cx = bx + 0.13 + (c % 2) * 1.23 + 0.6, cy = y + 0.24 + ch / 2 + layer * ch, cz = (RZ0 + RZ1) / 2;
+        m4.compose(new THREE.Vector3(cx + (rr() - 0.5) * 0.05, cy, cz + (rr() - 0.5) * 0.06), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (rr() - 0.5) * 0.04), new THREE.Vector3(1.18 * k, ch * 0.99 * k, 1.02 * k));
         carton.setMatrixAt(ic, m4);
-        carton.setColorAt(ic, tint.setHSL(0.08, 0.2, 0.92 + rr() * 0.08));
+        carton.setColorAt(ic, tint.setHSL(0.08, 0.18 + rr() * 0.08, 0.86 + rr() * 0.14));
         ic++;
       }
+      const wrapped = layers === 2 && rr() < 0.35;
+      wrap.setMatrixAt(iw++, m4.compose(new THREE.Vector3(bx + BAY / 2, y + 0.24 + ch, (RZ0 + RZ1) / 2), new THREE.Quaternion(), new THREE.Vector3(1, wrapped ? ch / 0.89 : 0.0001, 1)));
     }
   }
   for (const m of [web, flange, guard, rafter, upright, beam, pallet, carton]) { m.castShadow = false; m.receiveShadow = true; }
-  hall.add(upright, beam, pallet, carton);
+  hall.add(upright, beam, pallet, carton, wrap);
+
+  // ready orders on the floor: pallets with cartons in stretch film, waiting for the trucks
+  const stackXs = [-30, -21.5, -9, 12.5, 24, 35];
+  const fPallet = new THREE.InstancedMesh(new THREE.BoxGeometry(1.9, 0.16, 1.3), palletMat, stackXs.length);
+  const fCarton = new THREE.InstancedMesh(new THREE.BoxGeometry(0.9, 0.62, 0.62), cartonMat, stackXs.length * 12);
+  const film = new THREE.InstancedMesh(new THREE.BoxGeometry(1.94, 1.95, 1.34), new THREE.MeshStandardMaterial({ color: '#eef4f8', roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.12, depthWrite: false }), stackXs.length);
+  const SZ = BZ + 5.2;
+  let fc = 0;
+  stackXs.forEach((sx, i) => {
+    fPallet.setMatrixAt(i, m4.makeTranslation(sx, FY + 0.08, SZ));
+    film.setMatrixAt(i, m4.makeTranslation(sx, FY + 0.16 + 0.975, SZ));
+    for (let ly = 0; ly < 3; ly++) for (let cxi = 0; cxi < 2; cxi++) for (let czi = 0; czi < 2; czi++) {
+      fCarton.setMatrixAt(fc, m4.makeTranslation(sx - 0.46 + cxi * 0.92, FY + 0.16 + 0.31 + ly * 0.63, SZ - 0.32 + czi * 0.64));
+      fCarton.setColorAt(fc, tint.setHSL(0.08, 0.2, 0.92 + rr() * 0.08));
+      fc++;
+    }
+  });
+  fPallet.receiveShadow = fCarton.receiveShadow = true;
+  hall.add(fPallet, fCarton, film);
 
   // round ventilation duct along the roof
   const duct = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, EX + 40, 24), new THREE.MeshStandardMaterial({ color: '#c4cad0', roughness: 0.3, metalness: 0.85 }));
@@ -310,60 +391,107 @@ function buildHall(g) {
   return hall;
 }
 
+// kraft cardboard: fibres and a darker band along the corrugated edges
+function kraft(x, W, H, seed = 11) {
+  x.fillStyle = '#c69a63';
+  x.fillRect(0, 0, W, H);
+  const r = rng(seed);
+  for (let i = 0; i < W * 0.9; i++) {
+    x.fillStyle = r() < 0.5 ? `rgba(110,72,36,${r() * 0.07})` : `rgba(255,236,200,${r() * 0.06})`;
+    x.fillRect(r() * W, 0, 1 + r() * 2, H);
+  }
+  for (let i = 0; i < 70; i++) {
+    const cx = r() * W, cy = r() * H, rad = 20 + r() * 80;
+    const gr = x.createRadialGradient(cx, cy, 0, cx, cy, rad);
+    gr.addColorStop(0, `rgba(120,80,40,${r() * 0.07})`);
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = gr;
+    x.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
+  }
+  // edges: crushed corrugation shows as a darker rim
+  const e = Math.max(4, W * 0.012);
+  x.strokeStyle = 'rgba(95,60,28,0.35)';
+  x.lineWidth = e;
+  x.strokeRect(e / 2, e / 2, W - e, H - e);
+}
+// packing tape: glossy brown band
+function tape(x, x0, y0, w, h) {
+  const vertical = h > w;
+  const g = vertical ? x.createLinearGradient(x0, 0, x0 + w, 0) : x.createLinearGradient(0, y0, 0, y0 + h);
+  g.addColorStop(0, 'rgba(150,100,45,0.75)');
+  g.addColorStop(0.3, 'rgba(214,170,105,0.8)');
+  g.addColorStop(0.55, 'rgba(176,124,62,0.78)');
+  g.addColorStop(1, 'rgba(140,92,40,0.75)');
+  x.fillStyle = g;
+  x.fillRect(x0, y0, w, h);
+}
+// the long side of a chick box: air holes, logo, handling marks
 function cardboardTexture(label = true) {
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 256;
-  const x = c.getContext('2d');
-  x.fillStyle = '#c99a62';
-  x.fillRect(0, 0, 512, 256);
-  const r = rng(11);
-  for (let i = 0; i < 260; i++) {
-    x.fillStyle = `rgba(120,80,40,${r() * 0.08})`;
-    x.fillRect(r() * 512, 0, 1 + r() * 2, 256);
-  }
-  x.fillStyle = '#4d3420';
-  for (let i = 0; i < 6; i++) {
-    x.beginPath();
-    x.arc(60 + i * 78, 60, 13, 0, Math.PI * 2);
-    x.fill();
-  }
-  if (label) {
-    drawLogo(x, 40, 118, 74);
-    x.font = '800 44px Unbounded, Manrope, sans-serif';
-    x.fillStyle = '#3a2717';
-    x.fillText('INKUBIO', 110, 170);
-    x.font = '700 24px Manrope, sans-serif';
-    x.fillText(L('ЖИВЫЕ ЦЫПЛЯТА · ОСТОРОЖНО'), 110, 215, 390);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
+  const t = canvasTex(512, 256, (x, W, H) => {
+    kraft(x, W, H);
+    for (let i = 0; i < 6; i++) {
+      const cx = 60 + i * 78, cy = 58;
+      x.fillStyle = 'rgba(255,230,190,0.35)';
+      x.beginPath(); x.ellipse(cx, cy + 2, 15, 15, 0, 0, Math.PI * 2); x.fill();
+      x.fillStyle = '#2a1a0d';
+      x.beginPath(); x.ellipse(cx, cy, 12, 12, 0, 0, Math.PI * 2); x.fill();
+      x.fillStyle = 'rgba(0,0,0,0.25)';
+      x.beginPath(); x.ellipse(cx, cy - 3, 12, 8, 0, Math.PI, Math.PI * 2); x.fill();
+    }
+    if (label) {
+      drawLogo(x, 40, 112, 80);
+      x.font = '800 44px Unbounded, Manrope, sans-serif';
+      x.fillStyle = '#2f1f12';
+      x.fillText('INKUBIO', 112, 165);
+      x.font = '700 22px Manrope, sans-serif';
+      x.fillText(L('ЖИВЫЕ ЦЫПЛЯТА · ОСТОРОЖНО'), 112, 205, 330);
+      // "this way up" arrows
+      x.strokeStyle = '#2f1f12';
+      x.lineWidth = 5;
+      for (const ax of [452, 478]) {
+        x.beginPath(); x.moveTo(ax, 225); x.lineTo(ax, 160); x.moveTo(ax - 10, 174); x.lineTo(ax, 160); x.lineTo(ax + 10, 174); x.stroke();
+      }
+      x.strokeRect(438, 150, 54, 84);
+    }
+  }, { rx: 1, ry: 1 });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   return t;
 }
-
-function truckSideTexture() {
-  const c = document.createElement('canvas');
-  c.width = 2048; c.height = 720;
-  const x = c.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 2048, 0);
-  g.addColorStop(0, '#f7f8fa');
-  g.addColorStop(1, '#e9edf1');
-  x.fillStyle = g;
-  x.fillRect(0, 0, 2048, 720);
-  x.fillStyle = '#ffc93a';
-  x.fillRect(0, 560, 2048, 40);
-  x.fillStyle = '#16181b';
-  x.fillRect(0, 600, 2048, 14);
-  drawLogo(x, 135, 120, 340);
-  x.font = '800 190px Unbounded, Manrope, sans-serif';
-  x.fillStyle = '#16181b';
-  x.fillText('INKUBIO', 440, 360);
-  x.font = '600 64px Manrope, sans-serif';
-  x.fillStyle = '#5b636b';
-  x.fillText(L('Суточные цыплята · Доставка с климат-контролем'), 450, 470, 1560);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
+// box ends: hand-hold slot and tape running down from the lid
+function cardboardEndTexture() {
+  const t = canvasTex(256, 256, (x, W, H) => {
+    kraft(x, W, H, 5);
+    tape(x, W / 2 - 22, 0, 44, H * 0.32);
+    x.fillStyle = 'rgba(255,230,190,0.3)';
+    x.beginPath(); x.roundRect(W / 2 - 52, H * 0.42 + 2, 104, 30, 15); x.fill();
+    x.fillStyle = '#24160b';
+    x.beginPath(); x.roundRect(W / 2 - 50, H * 0.42, 100, 26, 13); x.fill();
+    drawLogo(x, W / 2 - 22, H * 0.62, 56);
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   return t;
+}
+// lid flaps: tape along the meeting edge
+function cardboardFlapTexture() {
+  const t = canvasTex(512, 128, (x, W, H) => {
+    kraft(x, W, H, 9);
+    tape(x, 0, 0, W, 30);
+    tape(x, 0, H - 30, W, 30);
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+// fibre relief for the bump map
+function fibreBump() {
+  return canvasTex(256, 256, (x, W, H) => {
+    x.fillStyle = '#808080';
+    x.fillRect(0, 0, W, H);
+    const r = rng(4);
+    for (let i = 0; i < 900; i++) {
+      x.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)';
+      x.fillRect(r() * W, r() * H, 1, 4 + r() * 18);
+    }
+  }, { srgb: false, rx: 3, ry: 3 });
 }
 
 export function createLine({ chickLayers = 6 } = {}) {
@@ -493,79 +621,41 @@ export function createLine({ chickLayers = 6 } = {}) {
   feeder.castShadow = true;
 
   // transport boxes
-  const cardSide = new THREE.MeshStandardMaterial({ map: cardboardTexture(true), roughness: 0.9 });
-  const cardPlain = new THREE.MeshStandardMaterial({ color: '#c3955f', roughness: 0.95 });
+  const fibres = fibreBump();
+  const cardSide = new THREE.MeshStandardMaterial({ map: cardboardTexture(true), roughness: 0.88, bumpMap: fibres, bumpScale: 0.6 });
+  const cardEnd = new THREE.MeshStandardMaterial({ map: cardboardEndTexture(), roughness: 0.88, bumpMap: fibres, bumpScale: 0.6 });
+  const cardFlap = new THREE.MeshStandardMaterial({ map: cardboardFlapTexture(), roughness: 0.8, bumpMap: fibres, bumpScale: 0.6 });
+  const liner = new THREE.MeshStandardMaterial({ color: '#efe3c8', roughness: 0.95 }); // paper pad on the bottom
   const boxes = [];
   const BL = 2.2, BW = 1.4, BH = 1.05, BT = 0.05;
   for (let j = 0; j < N_BOXES; j++) {
     const b = new THREE.Group();
     g.add(b);
-    box(BL, BT, BW, cardPlain, 0, BT / 2, 0, b);
+    box(BL, BT, BW, liner, 0, BT / 2, 0, b);
     box(BL, BH, BT, cardSide, 0, BH / 2, BW / 2, b);
     box(BL, BH, BT, cardSide, 0, BH / 2, -BW / 2, b);
-    box(BT, BH, BW, cardPlain, BL / 2, BH / 2, 0, b);
-    box(BT, BH, BW, cardPlain, -BL / 2, BH / 2, 0, b);
+    box(BT, BH, BW, cardEnd, BL / 2, BH / 2, 0, b);
+    box(BT, BH, BW, cardEnd, -BL / 2, BH / 2, 0, b);
     const flaps = [];
     for (const s of [-1, 1]) {
       const hinge = new THREE.Group();
       hinge.position.set(0, BH, (s * BW) / 2);
       b.add(hinge);
-      const f = box(BL, 0.04, BW / 2, cardPlain, 0, 0, (-s * BW) / 4, hinge);
+      const f = box(BL, 0.04, BW / 2, cardFlap, 0, 0, (-s * BW) / 4, hinge);
       f.castShadow = true;
       flaps.push({ hinge, s });
     }
     boxes.push({ group: b, flaps });
   }
 
-  // truck
-  const truck = new THREE.Group();
-  g.add(truck);
+  // truck: a refrigerated delivery truck in brand colours (js/truck.js)
   const TX0 = 19.2, TX1 = 30.0, TY0 = -1.75, TY1 = 2.0, TZ = LINE_Z, TWID = 3.0;
-  const sideTex = truckSideTexture();
-  const sideMat = std({ map: sideTex, roughness: 0.4, clearcoat: 0.6 });
-  const tlen = TX1 - TX0, th = TY1 - TY0;
-  box(tlen, th, 0.08, sideMat, (TX0 + TX1) / 2, (TY0 + TY1) / 2, TZ + TWID / 2, truck);
-  box(tlen, th, 0.08, white, (TX0 + TX1) / 2, (TY0 + TY1) / 2, TZ - TWID / 2, truck);
-  box(tlen, 0.1, TWID, white, (TX0 + TX1) / 2, TY1, TZ, truck);
-  box(tlen, 0.15, TWID, darkM, (TX0 + TX1) / 2, TY0 + 0.07, TZ, truck);
-  box(0.1, th, TWID, white, TX1, (TY0 + TY1) / 2, TZ, truck);
-  box(tlen + 0.4, 0.35, TWID - 0.3, darkM, (TX0 + TX1) / 2 + 0.6, TY0 - 0.25, TZ, truck);
-  // rear frame
-  for (const dz of [-TWID / 2, TWID / 2]) box(0.2, th, 0.2, darkM, TX0, (TY0 + TY1) / 2, TZ + dz, truck);
-  box(0.2, 0.2, TWID, darkM, TX0, TY1, TZ, truck);
-  // roll-up door
-  const door = new THREE.Group();
-  door.position.set(TX0 - 0.05, TY1, TZ);
-  truck.add(door);
-  const doorMesh = box(0.06, th, TWID - 0.1, new THREE.MeshStandardMaterial({ color: '#e2e6ea', roughness: 0.5, metalness: 0.3 }), 0, -th / 2, 0, door);
-  // cab
-  const cabMat = std({ color: '#16181b', roughness: 0.25, clearcoat: 1, metalness: 0.3 });
-  box(2.4, 2.3, TWID - 0.1, cabMat, TX1 + 1.35, -0.5, TZ, truck);
-  box(1.2, 1.0, TWID - 0.2, std({ color: '#7fb6e6', roughness: 0.05, metalness: 0.2, clearcoat: 1 }), TX1 + 2.0, 0.25, TZ, truck);
-  box(0.3, 0.25, TWID - 0.2, accent, TX1 + 2.55, -1.3, TZ, truck);
-  const lightMat = new THREE.MeshBasicMaterial({ color: '#fff6d8', toneMapped: false });
-  for (const dz of [-1.1, 1.1]) box(0.06, 0.2, 0.4, lightMat, TX1 + 2.58, -1.0, TZ + dz, truck);
-  const wheels = [];
-  const wheelGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.45, 28);
-  wheelGeo.rotateX(Math.PI / 2);
-  const tyre = new THREE.MeshStandardMaterial({ color: '#111', roughness: 0.9 });
-  const hubGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.47, 6);
-  hubGeo.rotateX(Math.PI / 2);
-  for (const x of [TX0 + 1.5, TX0 + 2.9, TX1 + 1.6]) {
-    for (const dz of [-TWID / 2 + 0.2, TWID / 2 - 0.2]) {
-      const w = new THREE.Group();
-      w.position.set(x, -2.0, TZ + dz);
-      truck.add(w);
-      const tm = new THREE.Mesh(wheelGeo, tyre);
-      tm.castShadow = true;
-      w.add(tm, new THREE.Mesh(hubGeo, steel));
-      wheels.push(w);
-    }
-  }
+  const { group: truck, door, wheels } = createTruck({ x0: TX0, x1: TX1, y0: TY0, y1: TY1, z: TZ, width: TWID });
+  g.add(truck);
 
   // chicks on the line (index 0 is the hero, supplied from outside)
   const others = [];
-  const tints = ['#f5cb4c', '#f3c74a', '#f7d055', '#f2c548', '#f6ce52', '#f4c94d', '#f8d258'];
+  const tints = ['#ffd25a', '#ffcf55', '#ffd662', '#fecd52', '#ffd45e', '#ffd058', '#ffd866']; // warm butter-yellow, like the hero
   for (let i = 1; i < N_CHICKS; i++) {
     const c = createChick({ color: tints[i - 1], seed: i * 3 + 1, layers: chickLayers });
     c.pose2 = createPose();
