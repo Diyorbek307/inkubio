@@ -171,7 +171,7 @@ const MIME = {
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp',
   '.ico': 'image/x-icon', '.woff2': 'font/woff2',
 };
-const PUBLIC = ['css', 'js', 'vendor', 'fonts', 'photos'];
+const PUBLIC = ['css', 'js', 'vendor', 'fonts', 'photos', 'img'];
 const PAGES = ['index.html', 'privacy.html'];
 const gzCache = new Map();
 

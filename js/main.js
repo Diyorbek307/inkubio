@@ -271,7 +271,7 @@ function updateDust(time) {
 /* ------------------------------------------------------------------ */
 /* Objects                                                             */
 /* ------------------------------------------------------------------ */
-const hero = createChick({ seed: 2, layers: Math.max(5, Math.round(12 * Q.fur)) });
+const hero = createChick({ seed: 2, layers: Math.max(6, Math.round(18 * Q.fur)) });
 scene.add(hero.root);
 
 const egg = createEgg();
@@ -283,7 +283,7 @@ egg.group.add(embryo.group);
 const incubator = createIncubator();
 scene.add(incubator.group, incubator.lightGroup);
 
-const line = createLine({ chickLayers: Math.max(3, Math.round(6 * Q.fur)) });
+const line = createLine({ chickLayers: Math.max(3, Math.round(8 * Q.fur)) });
 scene.add(line.group);
 
 // floor for the "meeting" scene
@@ -641,8 +641,9 @@ function update(t, time, dt) {
   // --- background / fog / lights
   colorAt(t, BG, bg);
   scene.fog.color.copy(bg);
-  scene.fog.near = kf(t, [[T.line, 60], [T.line + 80, 45]]);
-  scene.fog.far = kf(t, [[T.line, 220], [T.line + 80, 150]]);
+  // inside the hangar a light haze softens the racks at the back, so the line and the titles stay readable
+  scene.fog.near = kf(t, [[T.line, 60], [T.line + 80, 20]]);
+  scene.fog.far = kf(t, [[T.line, 220], [T.line + 80, 85]]);
   hemi.intensity = kf(t, [[0, 0.22], [300, 0.22], [360, 0.3], [440, 0.12], [OPEN_A, 0.12], [OPEN_B, 0.45], [1250, 0.45], [1330, 0.55]]);
   key.intensity = kf(t, [[0, 2.1 * intro], [300, 2.1], [360, 1.3], [440, 0.45], [OPEN_A, 0.45], [OPEN_B, 2.4], [1250, 2.4], [1330, 2.8]]);
   rim.intensity = kf(t, [[0, 1.8 * intro], [300, 1.8], [380, 0.4], [OPEN_A, 0.4], [OPEN_B, 1.8], [1250, 1.8], [1330, 0.5]]);
@@ -734,7 +735,8 @@ function update(t, time, dt) {
     const side = innerWidth > 760 ? 1 : 0;
     const R = Math.min(3.7 * far, 4.2);
     const startZ = 7.5 * far; // where the climate scene leaves the camera
-    const farZ = 34 * Math.max(1, far * 0.85);
+    const farZ = 54 * Math.max(1, far * 0.68); // far enough to see the whole 2-metre cabinet
+    const farY = side ? 2.6 : 7.4; // on phones the title sits on top, so the cabinet goes lower in the frame
     const settle = sr(c, 0, 0.12);
     contactMat.opacity = 0.85 * (1 - sr(c, 0, 0.06));
     egg.pivot.rotation.x = Math.PI * (1 - sr(c, 0.02, 0.16)); // turns blunt end up as it is set into the tray
@@ -743,12 +745,12 @@ function update(t, time, dt) {
     egg.pivot.position.y = 1 + Math.sin(time * 1.1) * 0.05 * (1 - settle);
     if (c < 0.24) {
       const e = easeInOut(range(c, 0, 0.2));
-      cam.set(lerp(Math.sin(time * 0.17) * 0.2, -5.5 * side, e), lerp(1.2, 2.6, e), lerp(startZ, farZ, e));
-      tgt.set(-5.5 * side * e, lerp(1, 1.4, e), -e);
+      cam.set(lerp(Math.sin(time * 0.17) * 0.2, -7 * side, e), lerp(1.2, farY + 1, e), lerp(startZ, farZ, e));
+      tgt.set(-7 * side * e, lerp(1, farY, e), -e);
     } else if (c < 0.4) {
       const e = easeInOut(range(c, 0.24, 0.4));
-      cam.set(lerp(-5.5 * side, 0, e), lerp(2.6, 1.15, e), lerp(farZ, R, e));
-      tgt.set(lerp(-5.5 * side, 0, e), lerp(1.4, 1, e), lerp(-1, 0, e));
+      cam.set(lerp(-7 * side, 0, e), lerp(farY + 1, 1.15, e), lerp(farZ, R, e));
+      tgt.set(lerp(-7 * side, 0, e), lerp(farY, 1, e), lerp(-1, 0, e));
     } else {
       const a = kf(c, [[0.4, 0], [0.6, -0.45], [0.82, 0.4], [1, 0]]);
       cam.set(Math.sin(a) * R, 1.15, Math.cos(a) * R);

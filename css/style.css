@@ -134,8 +134,7 @@ body.ready #loader { opacity: 0; visibility: hidden; }
 .top { transition: background 0.35s, padding 0.35s, box-shadow 0.35s; }
 .top.solid { background: rgba(12, 12, 14, 0.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); padding-top: 12px; padding-bottom: 12px; box-shadow: 0 1px 0 rgba(246, 242, 234, 0.07); pointer-events: auto; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-family: var(--display); font-weight: 700; letter-spacing: 0.08em; font-size: 15px; transition: color 0.5s; }
-.brand-mark { width: 22px; height: 28px; color: var(--ink); }
-body.light .brand-mark path:last-child { stroke: #e3e7eb; }
+.brand-mark { width: 27px; height: 34px; flex: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25)); }
 .top-actions { display: flex; gap: 10px; align-items: center; }
 
 .pill {
@@ -812,7 +811,7 @@ dialog .alt a, dialog .consent a { color: var(--accent); }
   .cta-long { display: none; } /* header button: «Заказать» — the full text no longer fits next to the logo */
   .cta-short { display: inline; }
   .brand { gap: 8px; font-size: 14px; }
-  .brand-mark { width: 19px; height: 24px; }
+  .brand-mark { width: 23px; height: 29px; }
   .top-actions { gap: 6px; }
   .fact-grid { grid-template-columns: 1fr; }
   .fact { height: 150px; }

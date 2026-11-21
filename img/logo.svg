@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 128">
+  <defs>
+    <clipPath id="egg"><path d="M50 3C79 3 97 47 97 80c0 28-20 45-47 45S3 108 3 80C3 47 21 3 50 3z"/></clipPath>
+  </defs>
+  <path d="M50 3C79 3 97 47 97 80c0 28-20 45-47 45S3 108 3 80C3 47 21 3 50 3z" fill="#1d5c2f"/>
+  <g clip-path="url(#egg)">
+    <path fill="#fbf1d8" d="M29 9C20 23 10 41 8 57c-2 14 10 24 32 26 20 2 40 0 58-7-9-4-15-12-18-20L66 30c-10-8-20-4-22 6-6-6-12-15-15-27z"/>
+    <circle cx="63" cy="41" r="16.5" fill="#fbf1d8"/>
+    <path fill="#f6bf1f" d="M26.5 19C19 32 13.5 45 13.5 56.5c.5 11 13 17 33 18 15 1 28-.5 39-2-8-4-13-9-17-15-8 2-16 0-22-6-8-8-15-19-19.5-32.5z"/>
+    <path fill="#1d5c2f" stroke="#fbf1d8" stroke-width="3" stroke-linejoin="round" d="M41 114c11-15 30-25 55-28-8 16-27 27-55 28z"/>
+    <path fill="none" stroke="#fbf1d8" stroke-width="3" stroke-linecap="round" d="M11 103c10-7 21-10 33-11"/>
+  </g>
+  <path fill="#f6bf1f" d="M78.5 36.5l11 4.5-10.5 5.5z"/>
+  <path fill="none" stroke="#1d5c2f" stroke-width="2.6" stroke-linecap="round" d="M60.5 37q5-5.5 10 0"/>
+</svg>

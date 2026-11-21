@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { std } from './mat.js';
 import { createChick, createPose } from './chick.js';
 import { range, kf, easeIn, easeOut, lerp, bump, rng } from './util.js';
+import { drawLogo } from './logo.js';
 
 /*
  Processing line along +x.
@@ -39,24 +40,273 @@ function stripeTexture() {
   return t;
 }
 
-function gridTexture() {
+const canvasTex = (w, h, draw, { srgb = true, rx = 1, ry = 1 } = {}) => {
   const c = document.createElement('canvas');
-  c.width = c.height = 512;
-  const x = c.getContext('2d');
-  x.fillStyle = '#979fa8';
-  x.fillRect(0, 0, 512, 512);
-  x.strokeStyle = 'rgba(40,50,60,0.12)';
-  x.lineWidth = 3;
-  for (let i = 0; i <= 512; i += 128) {
-    x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 512); x.stroke();
-    x.beginPath(); x.moveTo(0, i); x.lineTo(512, i); x.stroke();
-  }
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(40, 40);
-  t.colorSpace = THREE.SRGBColorSpace;
+  t.repeat.set(rx, ry);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
   return t;
+};
+
+// polished concrete: soft blotches, fine speckle, saw-cut joints every 6 m, faint tyre marks
+function concreteTexture() {
+  return canvasTex(1024, 1024, (x, N) => {
+    x.fillStyle = '#b3b7ba';
+    x.fillRect(0, 0, N, N);
+    const r = rng(23);
+    for (let i = 0; i < 260; i++) {
+      const cx = r() * N, cy = r() * N, rad = 30 + r() * 170;
+      const gr = x.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      const dark = r() < 0.6;
+      gr.addColorStop(0, dark ? `rgba(80,86,92,${0.04 + r() * 0.06})` : `rgba(255,255,255,${0.03 + r() * 0.05})`);
+      gr.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = gr;
+      x.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
+    }
+    const img = x.getImageData(0, 0, N, N);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const n = (r() - 0.5) * 16;
+      img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n;
+    }
+    x.putImageData(img, 0, 0);
+    x.strokeStyle = 'rgba(70,74,78,0.18)';
+    x.lineWidth = 7;
+    for (let i = 0; i < 9; i++) {
+      x.beginPath();
+      const y0 = r() * N;
+      x.moveTo(0, y0);
+      x.bezierCurveTo(N * 0.3, y0 + (r() - 0.5) * 300, N * 0.7, y0 + (r() - 0.5) * 300, N, y0 + (r() - 0.5) * 120);
+      x.stroke();
+    }
+    x.fillStyle = 'rgba(55,60,64,0.55)';
+    for (let i = 0; i < N; i += 256) { x.fillRect(i, 0, 3, N); x.fillRect(0, i, N, 3); }
+  }, { rx: 400 / 24, ry: 400 / 24 });
+}
+
+// profiled steel cladding (vertical ribs)
+function claddingTexture(rx, ry) {
+  return canvasTex(256, 64, (x, w, h) => {
+    x.fillStyle = '#dde1e4';
+    x.fillRect(0, 0, w, h);
+    for (let i = 0; i < w; i += 32) {
+      const gr = x.createLinearGradient(i, 0, i + 32, 0);
+      gr.addColorStop(0, '#c9ced2');
+      gr.addColorStop(0.18, '#f1f3f5');
+      gr.addColorStop(0.32, '#d3d8dc');
+      gr.addColorStop(0.5, '#dfe3e6');
+      gr.addColorStop(1, '#d9dde1');
+      x.fillStyle = gr;
+      x.fillRect(i, 0, 32, h);
+    }
+  }, { rx, ry });
+}
+
+// high window band: glazing in a mullion grid, daylight behind
+function glazingTexture(rx) {
+  return canvasTex(512, 128, (x, w, h) => {
+    const gr = x.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#f6fbff');
+    gr.addColorStop(1, '#cfe1ef');
+    x.fillStyle = gr;
+    x.fillRect(0, 0, w, h);
+    x.fillStyle = '#7d8a96';
+    for (let i = 0; i < w; i += 64) x.fillRect(i, 0, 6, h);
+    x.fillRect(0, 0, w, 7);
+    x.fillRect(0, h - 7, w, 7);
+    x.fillRect(0, h / 2 - 2, w, 4);
+  }, { rx, ry: 1 });
+}
+
+// yellow / black safety hatching
+function hazardTexture(rx, ry) {
+  return canvasTex(128, 128, (x, w) => {
+    x.fillStyle = '#f2c21b';
+    x.fillRect(0, 0, w, w);
+    x.fillStyle = '#1b1c1e';
+    for (let i = -w; i < w * 2; i += 48) {
+      x.beginPath();
+      x.moveTo(i, 0); x.lineTo(i + 24, 0); x.lineTo(i + 24 - w, w); x.lineTo(i - w, w);
+      x.fill();
+    }
+  }, { rx, ry });
+}
+
+/*
+ Steel-framed hangar: back wall at z = -15 (x from -40 to 46), end wall with an open gate at x = 46,
+ roof at y = 13. Floor level y = -2.6.
+*/
+function buildHall(g) {
+  const FY = -2.6, BZ = -15, EX = 46, RY = 13;
+  const hall = new THREE.Group();
+  g.add(hall);
+  const plane = (w, h, mat, x, y, z, ry = 0) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
+    m.receiveShadow = true;
+    hall.add(m);
+    return m;
+  };
+
+  // floor
+  const concrete = concreteTexture();
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.62, roughnessMap: concrete, envMapIntensity: 0.9 }));
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = FY;
+  floor.receiveShadow = true;
+  hall.add(floor);
+  // painted walkway lines and a hatched zone at the gate
+  const paint = new THREE.MeshStandardMaterial({ color: '#f2c21b', roughness: 0.5 });
+  for (const z of [3.4, -6.4, BZ + 3.3]) {
+    const l = new THREE.Mesh(new THREE.PlaneGeometry(86, 0.16), paint);
+    l.rotation.x = -Math.PI / 2;
+    l.position.set(3, FY + 0.012, z);
+    hall.add(l);
+  }
+  const hatch = new THREE.Mesh(new THREE.PlaneGeometry(5, 10), new THREE.MeshStandardMaterial({ map: hazardTexture(5, 10), roughness: 0.5 }));
+  hatch.rotation.x = -Math.PI / 2;
+  hatch.position.set(EX - 2.6, FY + 0.012, -1.5);
+  hall.add(hatch);
+
+  // walls: concrete plinth, profiled cladding, a band of high windows, cladding up to the roof
+  const plinth = new THREE.MeshStandardMaterial({ color: '#9ea4a9', roughness: 0.9 });
+  const cladMat = (w, h) => new THREE.MeshStandardMaterial({ map: claddingTexture(w / 2.4, 1), roughness: 0.6, metalness: 0.2 });
+  const glaze = (w) => new THREE.MeshBasicMaterial({ map: glazingTexture(w / 4) });
+  const BW = EX + 40, BX = (EX - 40) / 2;
+  plane(BW, 1.4, plinth, BX, FY + 0.7, BZ);
+  plane(BW, 7.6, cladMat(BW, 7.6), BX, FY + 1.4 + 3.8, BZ);
+  plane(BW, 2.4, glaze(BW), BX, 7.6, BZ + 0.01);
+  plane(BW, RY - 8.8, cladMat(BW, RY - 8.8), BX, (8.8 + RY) / 2, BZ);
+  // end wall with the open gate (z from -6.5 to 3.5, up to y = 6.2)
+  const GZ0 = -6.5, GZ1 = 3.5, GY = 6.2, EZ1 = 60;
+  const side = (z0, z1, y0, y1, mat) => plane(z1 - z0, y1 - y0, mat, EX, (y0 + y1) / 2, (z0 + z1) / 2, -Math.PI / 2);
+  side(BZ, GZ0, FY, RY, cladMat(GZ0 - BZ, 10));
+  side(GZ1, EZ1, FY, RY, cladMat(EZ1 - GZ1, 10));
+  side(GZ0, GZ1, GY, RY, cladMat(GZ1 - GZ0, 6));
+  // gate frame, rolled-up door, bollards
+  const hz = new THREE.MeshStandardMaterial({ map: hazardTexture(1, 6), roughness: 0.5 });
+  for (const z of [GZ0, GZ1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, GY - FY, 0.5), hz);
+    post.position.set(EX - 0.25, (FY + GY) / 2, z);
+    hall.add(post);
+  }
+  const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, GZ1 - GZ0 + 0.6, 24), new THREE.MeshStandardMaterial({ color: '#8e979f', roughness: 0.4, metalness: 0.7 }));
+  roll.rotation.x = Math.PI / 2;
+  roll.position.set(EX - 0.6, GY + 0.45, (GZ0 + GZ1) / 2);
+  hall.add(roll);
+  const bollardMat = new THREE.MeshStandardMaterial({ color: '#f2c21b', roughness: 0.45 });
+  for (const z of [GZ0 - 0.9, GZ1 + 0.9]) {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.4, 16), bollardMat);
+    b.position.set(EX - 1.2, FY + 0.7, z);
+    hall.add(b);
+  }
+  // daylight outside the gate: yard and bright sky
+  const yard = new THREE.Mesh(new THREE.PlaneGeometry(120, 160), new THREE.MeshStandardMaterial({ color: '#5d6266', roughness: 0.95 }));
+  yard.rotation.x = -Math.PI / 2;
+  yard.position.set(EX + 60, FY + 0.01, 0);
+  hall.add(yard);
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(200, 80), new THREE.MeshBasicMaterial({ color: '#f4f8fb', fog: false }));
+  sky.rotation.y = -Math.PI / 2;
+  sky.position.set(EX + 70, 30, 0);
+  hall.add(sky);
+
+  // steel frame: I-beam columns every 8 m along the back wall, rafters across, purlins along
+  const frameMat = new THREE.MeshStandardMaterial({ color: '#4d5964', roughness: 0.5, metalness: 0.6 });
+  const colXs = [];
+  for (let x = -36; x <= EX - 2; x += 8) colXs.push(x);
+  const n = colXs.length;
+  const colH = RY - FY;
+  const web = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, colH, 0.5), frameMat, n);
+  const flange = new THREE.InstancedMesh(new THREE.BoxGeometry(0.55, colH, 0.1), frameMat, n * 2);
+  const guard = new THREE.InstancedMesh(new THREE.BoxGeometry(0.75, 1.3, 0.75), new THREE.MeshStandardMaterial({ map: hazardTexture(1, 2), roughness: 0.5 }), n);
+  const rafter = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.8, 72), frameMat, n);
+  const m4 = new THREE.Matrix4();
+  colXs.forEach((x, i) => {
+    web.setMatrixAt(i, m4.makeTranslation(x, FY + colH / 2, BZ + 0.55));
+    flange.setMatrixAt(i * 2, m4.makeTranslation(x, FY + colH / 2, BZ + 0.3));
+    flange.setMatrixAt(i * 2 + 1, m4.makeTranslation(x, FY + colH / 2, BZ + 0.8));
+    guard.setMatrixAt(i, m4.makeTranslation(x, FY + 0.65, BZ + 0.55));
+    rafter.setMatrixAt(i, m4.makeTranslation(x, RY - 0.4, BZ + 36));
+  });
+  const purlins = new THREE.InstancedMesh(new THREE.BoxGeometry(EX + 40, 0.18, 0.12), frameMat, 12);
+  for (let i = 0; i < 12; i++) purlins.setMatrixAt(i, m4.makeTranslation(BX, RY - 0.9, BZ + 1 + i * 6));
+  hall.add(web, flange, guard, rafter, purlins);
+  // roof sheets with two skylight strips
+  const roof = new THREE.Mesh(new THREE.PlaneGeometry(EX + 40, 72), new THREE.MeshStandardMaterial({ map: claddingTexture((EX + 40) / 2.4, 1), color: '#c9ced2', roughness: 0.7, side: THREE.DoubleSide }));
+  roof.rotation.x = Math.PI / 2;
+  roof.position.set(BX, RY, BZ + 36);
+  hall.add(roof);
+  const skyMat = new THREE.MeshBasicMaterial({ color: '#f7fbff' });
+  for (const z of [2, 16]) {
+    const s = new THREE.Mesh(new THREE.PlaneGeometry(EX + 40, 2.2), skyMat);
+    s.rotation.x = Math.PI / 2;
+    s.position.set(BX, RY - 0.02, z);
+    hall.add(s);
+  }
+  // round high-bay LED lamps
+  const lampXs = colXs.map((x) => x + 4).filter((x) => x < EX);
+  const lampZs = [-8, 4];
+  const lampBody = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.55, 0.75, 0.45, 24), new THREE.MeshStandardMaterial({ color: '#2b2f34', roughness: 0.4, metalness: 0.6 }), lampXs.length * lampZs.length);
+  const lampGlow = new THREE.InstancedMesh(new THREE.CircleGeometry(0.7, 24), new THREE.MeshBasicMaterial({ color: '#fff7e6', toneMapped: false, side: THREE.DoubleSide }), lampXs.length * lampZs.length);
+  const cable = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.02, 0.02, 1.6, 4), frameMat, lampXs.length * lampZs.length);
+  const rotDown = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+  let k = 0;
+  for (const x of lampXs) for (const z of lampZs) {
+    lampBody.setMatrixAt(k, m4.makeTranslation(x, RY - 2.4, z));
+    lampGlow.setMatrixAt(k, m4.makeTranslation(x, RY - 2.64, z).multiply(rotDown));
+    cable.setMatrixAt(k, m4.makeTranslation(x, RY - 1.4, z));
+    k++;
+  }
+  hall.add(lampBody, lampGlow, cable);
+
+  // pallet racking along the back wall: blue uprights, orange beams, pallets with cartons
+  const RZ0 = BZ + 1.2, RZ1 = BZ + 2.4, LEVELS = [FY + 1.25, FY + 3.55, FY + 5.85], BAY = 2.7;
+  const bays = [];
+  for (const x0 of colXs.slice(0, -1)) for (let b = 0; b < 2; b++) bays.push(x0 + 1.1 + b * (BAY + 0.6));
+  const upright = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 7.3, 0.12), new THREE.MeshStandardMaterial({ color: '#2f5d9a', roughness: 0.5, metalness: 0.3 }), bays.length * 4);
+  const beam = new THREE.InstancedMesh(new THREE.BoxGeometry(BAY, 0.16, 0.08), new THREE.MeshStandardMaterial({ color: '#e8772e', roughness: 0.45, metalness: 0.2 }), bays.length * LEVELS.length * 2);
+  const pallet = new THREE.InstancedMesh(new THREE.BoxGeometry(BAY - 0.25, 0.16, 1.1), new THREE.MeshStandardMaterial({ color: '#b48a5a', roughness: 0.9 }), bays.length * LEVELS.length);
+  const cartonTex = canvasTex(256, 256, (x, w) => {
+    x.fillStyle = '#c99a62'; x.fillRect(0, 0, w, w);
+    x.fillStyle = 'rgba(120,80,40,0.25)'; x.fillRect(0, w * 0.46, w, w * 0.08);
+    drawLogo(x, 20, 20, 64);
+    x.fillStyle = '#3a2717'; x.font = '800 30px Manrope, sans-serif'; x.fillText('INKUBIO', 78, 64);
+  });
+  const carton = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map: cartonTex, roughness: 0.9 }), bays.length * LEVELS.length * 4);
+  const rr = rng(31);
+  let iu = 0, ib = 0, ip = 0, ic = 0;
+  const tint = new THREE.Color();
+  for (const bx of bays) {
+    for (const ux of [bx, bx + BAY]) for (const z of [RZ0, RZ1]) upright.setMatrixAt(iu++, m4.makeTranslation(ux, FY + 3.65, z));
+    for (const y of LEVELS) {
+      for (const z of [RZ0, RZ1]) beam.setMatrixAt(ib++, m4.makeTranslation(bx + BAY / 2, y, z));
+      pallet.setMatrixAt(ip++, m4.makeTranslation(bx + BAY / 2, y + 0.16, (RZ0 + RZ1) / 2));
+      // a few cartons on each pallet, stacked a little unevenly
+      const full = rr();
+      for (let c = 0; c < 4; c++) {
+        const s = full < 0.12 ? 0.0001 : 1;
+        const cx = bx + 0.25 + (c % 2) * 1.12 + 0.52, cy = y + 0.24 + 0.46 + (c > 1 && rr() < 0.6 ? 0.92 : 0), cz = (RZ0 + RZ1) / 2;
+        const h = c > 1 && cy < y + 1 ? 0.0001 : s;
+        m4.compose(new THREE.Vector3(cx + (rr() - 0.5) * 0.08, cy, cz + (rr() - 0.5) * 0.08), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (rr() - 0.5) * 0.06), new THREE.Vector3(1.04 * h, 0.9 * h, 1.0 * h));
+        carton.setMatrixAt(ic, m4);
+        carton.setColorAt(ic, tint.setHSL(0.08, 0.2, 0.92 + rr() * 0.08));
+        ic++;
+      }
+    }
+  }
+  for (const m of [web, flange, guard, rafter, upright, beam, pallet, carton]) { m.castShadow = false; m.receiveShadow = true; }
+  hall.add(upright, beam, pallet, carton);
+
+  // round ventilation duct along the roof
+  const duct = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, EX + 40, 24), new THREE.MeshStandardMaterial({ color: '#c4cad0', roughness: 0.3, metalness: 0.85 }));
+  duct.rotation.z = Math.PI / 2;
+  duct.position.set(BX, RY - 2.2, BZ + 3.6);
+  hall.add(duct);
+  return hall;
 }
 
 function cardboardTexture(label = true) {
@@ -77,11 +327,12 @@ function cardboardTexture(label = true) {
     x.fill();
   }
   if (label) {
+    drawLogo(x, 40, 118, 74);
     x.font = '800 44px Unbounded, Manrope, sans-serif';
     x.fillStyle = '#3a2717';
-    x.fillText('INKUBIO', 40, 170);
+    x.fillText('INKUBIO', 110, 170);
     x.font = '700 24px Manrope, sans-serif';
-    x.fillText('ЖИВЫЕ ЦЫПЛЯТА · ОСТОРОЖНО', 40, 215);
+    x.fillText('ЖИВЫЕ ЦЫПЛЯТА · ОСТОРОЖНО', 110, 215);
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -101,15 +352,7 @@ function truckSideTexture() {
   x.fillRect(0, 560, 2048, 40);
   x.fillStyle = '#16181b';
   x.fillRect(0, 600, 2048, 14);
-  // egg logo
-  x.fillStyle = '#16181b';
-  x.beginPath();
-  x.ellipse(260, 300, 120, 160, 0, 0, Math.PI * 2);
-  x.fill();
-  x.fillStyle = '#ffc93a';
-  x.beginPath();
-  x.arc(260, 330, 62, 0, Math.PI * 2);
-  x.fill();
+  drawLogo(x, 135, 120, 340);
   x.font = '800 190px Unbounded, Manrope, sans-serif';
   x.fillStyle = '#16181b';
   x.fillText('INKUBIO', 440, 360);
@@ -137,12 +380,8 @@ export function createLine({ chickLayers = 6 } = {}) {
     return m;
   };
 
-  // factory floor
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ map: gridTexture(), roughness: 0.85 }));
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -2.6;
-  floor.receiveShadow = true;
-  g.add(floor);
+  // the hangar around the line: floor, walls, steel frame, racks, lights, the gate the truck leaves through
+  buildHall(g);
 
   // belt A
   const AX0 = -16, AX1 = BELT_END;
@@ -247,33 +486,6 @@ export function createLine({ chickLayers = 6 } = {}) {
   vax.add(vaxSign);
   let mistLevel = 0;
 
-  // back wall of the hall with a band of windows, for depth
-  const wallTex = (() => {
-    const c = document.createElement('canvas');
-    c.width = 1024; c.height = 256;
-    const x = c.getContext('2d');
-    x.fillStyle = '#e4e8ec';
-    x.fillRect(0, 0, 1024, 256);
-    x.fillStyle = '#d6dbe0';
-    for (let i = 0; i < 1024; i += 64) x.fillRect(i, 0, 3, 256);
-    const win = x.createLinearGradient(0, 40, 0, 110);
-    win.addColorStop(0, '#f8fbff');
-    win.addColorStop(1, '#cfe2f2');
-    x.fillStyle = win;
-    for (let i = 8; i < 1024; i += 128) x.fillRect(i, 40, 110, 70);
-    x.fillStyle = '#ffc93a';
-    x.fillRect(0, 214, 1024, 10);
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.wrapS = THREE.RepeatWrapping;
-    t.repeat.set(4, 1);
-    return t;
-  })();
-  const wall = new THREE.Mesh(new THREE.PlaneGeometry(90, 11), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.9 }));
-  wall.position.set(10, 2.9, -9);
-  wall.receiveShadow = true;
-  g.add(wall);
-
   // box feeder housing
   const feeder = box(2.0, 1.15, 2.3, white, 7.1, BOX_Y + 0.55, LINE_Z);
   box(2.02, 0.08, 2.32, accent, 7.1, BOX_Y + 0.9, LINE_Z);
@@ -352,7 +564,7 @@ export function createLine({ chickLayers = 6 } = {}) {
 
   // chicks on the line (index 0 is the hero, supplied from outside)
   const others = [];
-  const tints = ['#f2bd3b', '#f0b835', '#f4c443', '#eeb431', '#f3c040', '#f1ba38', '#f4c245'];
+  const tints = ['#f5cb4c', '#f3c74a', '#f7d055', '#f2c548', '#f6ce52', '#f4c94d', '#f8d258'];
   for (let i = 1; i < N_CHICKS; i++) {
     const c = createChick({ color: tints[i - 1], seed: i * 3 + 1, layers: chickLayers });
     c.pose2 = createPose();

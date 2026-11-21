@@ -12,25 +12,35 @@ import { std } from './mat.js';
 let furImage = null;
 function furTexture(rx, ry) {
   if (!furImage) {
-    const N = 255;
+    // Down strands: thousands of soft round dots. A dot's value says how long that strand is;
+    // its brightness falls off from the centre, so higher shells cut it thinner — strands taper to a tip.
+    const N = 512;
     const c = document.createElement('canvas');
     c.width = c.height = N;
     const x = c.getContext('2d');
     const img = x.createImageData(N, N);
-    // tufts of down: each 3x3 texel clump is one strand, thinner towards its tip
-    for (let y = 0; y < N; y += 3) {
-      for (let x0 = 0; x0 < N; x0 += 3) {
-        const v = Math.pow(Math.random(), 0.7) * 255;
-        for (let dy = 0; dy < 3; dy++) {
-          for (let dx = 0; dx < 3; dx++) {
-            if (y + dy >= N || x0 + dx >= N) continue;
-            const edge = dx === 1 && dy === 1 ? 1 : 0.82;
-            const i = (y + dy) * N + x0 + dx;
-            img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v * edge;
-            img.data[i * 4 + 3] = 255;
-          }
+    const a = new Float32Array(N * N);
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let k = 0; k < 21000; k++) {
+      const cx = rnd() * N, cy = rnd() * N;
+      const r = 1.4 + rnd() * 1.9;
+      const v = 0.35 + 0.65 * Math.pow(rnd(), 0.55);
+      const R = Math.ceil(r);
+      for (let dy = -R; dy <= R; dy++) {
+        for (let dx = -R; dx <= R; dx++) {
+          const d = Math.hypot(dx + (cx % 1) - 0.5, dy + (cy % 1) - 0.5) / r;
+          if (d >= 1) continue;
+          const px = (Math.floor(cx) + dx + N) % N, py = (Math.floor(cy) + dy + N) % N;
+          const val = v * (1 - d * d);
+          if (val > a[py * N + px]) a[py * N + px] = val;
         }
       }
+    }
+    for (let i = 0; i < N * N; i++) {
+      const v = Math.round(a[i] * 255);
+      img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
+      img.data[i * 4 + 3] = 255;
     }
     x.putImageData(img, 0, 0);
     furImage = c;
@@ -38,11 +48,30 @@ function furTexture(rx, ry) {
   const t = new THREE.CanvasTexture(furImage);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(rx, ry);
-  // no mip-maps: averaging would turn the strands into a solid surface
-  t.magFilter = THREE.NearestFilter;
-  t.minFilter = THREE.NearestFilter;
+  // smooth filtering keeps each strand round (no square pixels); no mip-maps, which would blur strands into a solid surface
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearFilter;
   t.generateMipmaps = false;
   return t;
+}
+
+// Down shading: deeper layers sit in the shadow of the ones above; at the silhouette light passes through
+// the fluffy edge and it glows softly — the look that makes down read as down and not as a toy.
+function furShader(m, f, rimColor) {
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.furF = { value: f };
+    sh.uniforms.rimColor = { value: rimColor };
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float furF;\nuniform vec3 rimColor;')
+      .replace('#include <opaque_fragment>', `
+        float ndv = clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0);
+        float rim = pow(1.0 - ndv, 2.2);
+        float lit = dot(outgoingLight, vec3(0.333));
+        outgoingLight *= mix(0.74, 1.05, furF);
+        outgoingLight += rimColor * rim * furF * (0.18 + 1.1 * lit);
+        #include <opaque_fragment>`);
+  };
+  m.customProgramCacheKey = () => 'chick-down';
 }
 
 // egg-shaped body, fuller at the chest and belly
@@ -66,23 +95,49 @@ export function createPose() {
   };
 }
 
-export function createChick({ color = '#f4bb26', seed = 1, layers = 16 } = {}) {
+// horny scales across the shank, as a bump map
+let scaleImage = null;
+function scaleTexture() {
+  if (!scaleImage) {
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 256;
+    const x = c.getContext('2d');
+    x.fillStyle = '#808080';
+    x.fillRect(0, 0, 64, 256);
+    for (let y = 0; y < 256; y += 16) {
+      const g = x.createLinearGradient(0, y, 0, y + 16);
+      g.addColorStop(0, '#5a5a5a');
+      g.addColorStop(0.25, '#b0b0b0');
+      g.addColorStop(1, '#6a6a6a');
+      x.fillStyle = g;
+      x.fillRect(0, y, 64, 15);
+    }
+    scaleImage = c;
+  }
+  const t = new THREE.CanvasTexture(scaleImage);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+export function createChick({ color = '#f6cd4f', seed = 1, layers = 16 } = {}) {
   const root = new THREE.Group();
   const bodyPivot = new THREE.Group();
   root.add(bodyPivot);
 
+  // a day-old broiler chick is pale lemon-yellow: deeper and warmer at the roots, almost cream at the tips
   const baseColor = new THREE.Color(color);
-  const tipColor = new THREE.Color('#ffe47a');
-  const wetColor = new THREE.Color('#cfa443');
-  const fluff = std({
-    color: baseColor, roughness: 0.9, sheen: 1, sheenColor: new THREE.Color('#fff0b0'), sheenRoughness: 0.55,
-    clearcoat: 0, clearcoatRoughness: 0.3, envMapIntensity: 0.5, alphaHash: true,
-  });
-  const beakMat = std({ color: '#e6c29a', roughness: 0.4, clearcoat: 0.5, clearcoatRoughness: 0.35, envMapIntensity: 0.7, alphaHash: true });
-  const toothMat = new THREE.MeshStandardMaterial({ color: '#f6f1e6', roughness: 0.5, alphaHash: true });
-  const legMat = std({ color: '#f0ab6c', roughness: 0.5, clearcoat: 0.25, envMapIntensity: 0.6, alphaHash: true });
-  const eyeMat = std({ color: '#0e0907', roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.8, alphaHash: true });
-  const lidMat = new THREE.MeshStandardMaterial({ color: '#5a4426', roughness: 0.8, alphaHash: true });
+  const rootColor = new THREE.Color(color).multiplyScalar(0.86);
+  const tipColor = new THREE.Color(color).lerp(new THREE.Color('#fff3c4'), 0.45);
+  const rimColor = new THREE.Color('#fff1c2');
+  const wetColor = new THREE.Color('#b99044');
+  const fluff = std({ color: rootColor, roughness: 0.95, envMapIntensity: 0.35, alphaHash: true });
+  const beakMat = std({ color: '#ecc995', roughness: 0.35, envMapIntensity: 0.8, alphaHash: true });
+  const toothMat = new THREE.MeshStandardMaterial({ color: '#f8f4ea', roughness: 0.45, alphaHash: true });
+  const shankBump = scaleTexture();
+  shankBump.repeat.set(1, 2.5);
+  const legMat = new THREE.MeshStandardMaterial({ color: '#efb253', roughness: 0.55, bumpMap: shankBump, bumpScale: 1.2, envMapIntensity: 0.6, alphaHash: true });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: '#0b0705', roughness: 0.03, metalness: 0.1, envMapIntensity: 2.4, alphaHash: true });
+  const lidMat = new THREE.MeshStandardMaterial({ color: '#6b5530', roughness: 0.85, alphaHash: true });
 
   const meshes = [];
   const furLayers = [];
@@ -94,18 +149,25 @@ export function createChick({ color = '#f4bb26', seed = 1, layers = 16 } = {}) {
     meshes.push(m);
     return m;
   };
-  function fur(mesh, radius, length, rx, ry, n = layers, droop = 0.25) {
+  // colour of one down layer: roots → body colour → pale tips
+  function shellColor(f, out, base = baseColor) {
+    out.copy(rootColor).lerp(base, Math.min(1, f * 2));
+    if (f > 0.5) out.lerp(tipColor, (f - 0.5) * 2 * 0.85);
+    return out;
+  }
+  function fur(mesh, radius, length, rx, ry, n = layers, droop = 0.35, comb = 0.4) {
     const tex = furTexture(rx, ry);
     for (let i = 1; i <= n; i++) {
       const f = i / n;
       // down is matte: a cheap Lambert material is enough and keeps the many layers fast
       const m = new THREE.MeshLambertMaterial({
-        color: baseColor.clone().lerp(tipColor, 0.05 + f * 0.75),
-        alphaMap: tex, alphaTest: 0.32 + f * 0.62,
+        color: shellColor(f, new THREE.Color()),
+        alphaMap: tex, alphaTest: 0.1 + Math.pow(f, 1.3) * 0.74,
       });
+      furShader(m, f, rimColor);
       m.userData = { base: m.alphaTest, f };
       const shell = new THREE.Mesh(mesh.geometry, m);
-      shell.userData = { f, len: length, radius, droop, i, n };
+      shell.userData = { f, len: length, radius, droop, comb, i, n };
       shell.raycast = () => {};
       mesh.add(shell);
       furLayers.push(m);
@@ -122,9 +184,11 @@ export function createChick({ color = '#f4bb26', seed = 1, layers = 16 } = {}) {
   }
   function setFurLength(k) {
     for (const s of furShells) {
-      const { f, len, radius, droop } = s.userData;
+      const { f, len, radius, droop, comb } = s.userData;
       s.scale.setScalar(1 + (f * len * k) / radius);
-      s.position.y = -f * len * k * droop * (0.04 / radius); // down settles slightly downwards
+      // the outer down bends: it settles downwards and lies back towards the tail
+      s.position.y = -droop * f * f * len * k;
+      s.position.z = -comb * f * f * len * k;
     }
   }
 
@@ -137,19 +201,19 @@ export function createChick({ color = '#f4bb26', seed = 1, layers = 16 } = {}) {
   bodyScaler.add(bodyTilt);
   const body = add(bodyTilt, bodyGeometry(0.5), fluff);
   body.scale.set(0.86, 0.88, 1.1);
-  fur(body, 0.5, 0.095, 4, 2);
+  fur(body, 0.5, 0.085, 4, 2, layers, 0.35, 0.55);
 
   // rump and tail down
   const rump = add(bodyTilt, new THREE.SphereGeometry(0.2, 32, 20), fluff);
   rump.position.set(0, 0.08, -0.5);
   rump.scale.set(1, 0.85, 0.9);
-  fur(rump, 0.2, 0.07, 1.5, 1, Math.ceil(layers * 0.6));
+  fur(rump, 0.2, 0.07, 1.5, 1, Math.ceil(layers * 0.6), 0.3, 0.6);
 
   // neck and chest blend
   const neck = add(bodyScaler, new THREE.SphereGeometry(0.27, 40, 28), fluff);
   neck.position.set(0, 1.02, 0.28);
   neck.scale.set(0.95, 1, 1);
-  fur(neck, 0.27, 0.08, 2, 1, Math.ceil(layers * 0.8));
+  fur(neck, 0.27, 0.07, 2, 1, Math.ceil(layers * 0.8), 0.3, 0.3);
 
   /* head */
   const headPivot = new THREE.Group();
@@ -158,7 +222,7 @@ export function createChick({ color = '#f4bb26', seed = 1, layers = 16 } = {}) {
   const head = add(headPivot, new THREE.SphereGeometry(0.3, 56, 40), fluff);
   head.position.set(0, 0.17, 0.05);
   head.scale.set(0.95, 0.97, 1.05);
-  fur(head, 0.3, 0.032, 3, 1.5, Math.ceil(layers * 0.8), 0.1);
+  fur(head, 0.3, 0.036, 3, 1.5, Math.ceil(layers * 0.8), 0.15, 0.45);
 
   // beak: short, pointed, pale, with the egg tooth on the tip
   const beakGeo = new THREE.ConeGeometry(0.06, 0.15, 24);
@@ -188,8 +252,9 @@ export function createChick({ color = '#f4bb26', seed = 1, layers = 16 } = {}) {
     ring.position.z = 0.012;
     const ball = add(eye, new THREE.SphereGeometry(0.063, 32, 20), eyeMat, false);
     ball.scale.set(1, 1.05, 0.7);
-    const glint = add(eye, new THREE.SphereGeometry(0.013, 10, 8), new THREE.MeshBasicMaterial({ color: '#ffffff', alphaHash: true }), false);
-    glint.position.set(0.018, 0.022, 0.04);
+    // a tiny catch-light; the rest of the shine comes from real reflections of the room
+    const glint = add(eye, new THREE.SphereGeometry(0.0075, 10, 8), new THREE.MeshBasicMaterial({ color: '#fff8ee', alphaHash: true }), false);
+    glint.position.set(0.016, 0.02, 0.043);
     eyes.push(eye);
   }
   const tufts = [];
@@ -198,22 +263,23 @@ export function createChick({ color = '#f4bb26', seed = 1, layers = 16 } = {}) {
   const wings = [];
   const wingGeo = new THREE.SphereGeometry(1, 36, 24);
   for (const s of [-1, 1]) {
+    // a day-old chick's wing is a small fluffy stub pressed to the body
     const wp = new THREE.Group();
-    wp.position.set(s * 0.4, 0.88, 0.12);
+    wp.position.set(s * 0.375, 0.86, 0.1);
     bodyPivot.add(wp);
     const w = add(wp, wingGeo, fluff);
-    w.scale.set(0.075, 0.17, 0.26);
-    w.position.set(s * 0.02, -0.11, -0.12);
-    w.rotation.set(0.45, s * 0.1, s * -0.12);
-    fur(w, 1, 0.3, 1, 0.5, Math.ceil(layers * 0.5));
+    w.scale.set(0.06, 0.13, 0.21);
+    w.position.set(s * 0.005, -0.1, -0.12);
+    w.rotation.set(0.5, s * 0.12, s * -0.1);
+    fur(w, 1, 0.42, 1, 0.5, Math.ceil(layers * 0.5), 0.3, 0.6);
     wings.push({ pivot: wp, side: s });
   }
 
   /* legs: long, thin, four toes */
   const legs = [];
-  const thighGeo = new THREE.CapsuleGeometry(0.05, 0.06, 4, 12);
-  const shankGeo = new THREE.CapsuleGeometry(0.034, 0.22, 4, 12);
-  const toeGeo = new THREE.CapsuleGeometry(0.019, 0.15, 4, 8);
+  const thighGeo = new THREE.CapsuleGeometry(0.075, 0.07, 4, 14);
+  const shankGeo = new THREE.CapsuleGeometry(0.037, 0.21, 4, 14);
+  const toeGeo = new THREE.CapsuleGeometry(0.022, 0.15, 4, 8);
   toeGeo.rotateX(Math.PI / 2);
   toeGeo.translate(0, 0, 0.085);
   const nailGeo = new THREE.ConeGeometry(0.014, 0.035, 8);
@@ -222,7 +288,9 @@ export function createChick({ color = '#f4bb26', seed = 1, layers = 16 } = {}) {
     const lp = new THREE.Group();
     lp.position.set(s * 0.15, 0.36, 0.05);
     bodyPivot.add(lp);
-    add(lp, thighGeo, fluff);
+    const thigh = add(lp, thighGeo, fluff); // fluffy "trousers" over the top of the leg
+    thigh.position.y = 0.03;
+    fur(thigh, 0.075, 0.05, 1, 1, Math.ceil(layers * 0.4), 0.4, 0.4);
     const shank = add(lp, shankGeo, legMat);
     shank.position.y = -0.2;
     const foot = new THREE.Group();
@@ -286,17 +354,16 @@ export function createChick({ color = '#f4bb26', seed = 1, layers = 16 } = {}) {
   const tmp = new THREE.Color();
   function setLook({ color: c = baseColor, fur: furAmount = 1, opacity = 1, wet = 0 } = {}) {
     tmp.copy(c).lerp(wetColor, wet * 0.6);
-    fluff.color.copy(tmp);
-    fluff.roughness = 0.9 - wet * 0.35;
-    fluff.clearcoat = wet * 0.35;
-    fluff.sheen = 1 - wet * 0.7;
+    fluff.color.copy(rootColor).lerp(wetColor, wet * 0.5);
+    fluff.roughness = 0.95 - wet * 0.45; // wet down is darker and a little glossy
     for (const m of [fluff, beakMat, toothMat, legMat, eyeMat, lidMat]) m.opacity = opacity;
     // wet down sticks together in thin clumps; dry down is long and fluffy
     const amount = furAmount * opacity * (1 - wet * 0.3);
     setFurLength((0.5 + 0.5 * (1 - wet)) * Math.max(0.35, furAmount));
     for (const m of furLayers) {
       m.alphaTest = Math.min(1.01, m.userData.base + (1 - amount) * 0.75);
-      m.color.copy(tmp).lerp(tipColor, (0.05 + m.userData.f * 0.75) * (1 - wet * 0.65));
+      shellColor(m.userData.f, m.color, tmp);
+      if (wet > 0) m.color.lerp(tmp, wet * 0.65);
     }
   }
   setLook();
