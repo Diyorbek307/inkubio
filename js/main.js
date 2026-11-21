@@ -299,6 +299,61 @@ disc.rotation.x = -Math.PI / 2;
 disc.receiveShadow = true;
 scene.add(disc);
 
+// a big golden egg of light behind the chick in its shell — the warm "sunrise" of the meeting scene
+const haloMat = (() => {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 320;
+  const x = c.getContext('2d');
+  x.translate(128, 172);
+  x.scale(1, 1.22);
+  const g = x.createRadialGradient(0, 8, 0, 0, 0, 126);
+  g.addColorStop(0, 'rgba(255,232,150,1)');
+  g.addColorStop(0.5, 'rgba(255,204,92,0.75)');
+  g.addColorStop(0.78, 'rgba(255,178,60,0.28)');
+  g.addColorStop(1, 'rgba(255,160,40,0)');
+  x.fillStyle = g;
+  x.beginPath();
+  // egg outline: narrower at the top
+  x.moveTo(0, -128);
+  x.bezierCurveTo(78, -128, 118, -30, 118, 30);
+  x.bezierCurveTo(118, 92, 66, 126, 0, 126);
+  x.bezierCurveTo(-66, 126, -118, 92, -118, 30);
+  x.bezierCurveTo(-118, -30, -78, -128, 0, -128);
+  x.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.SpriteMaterial({ map: t, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0, fog: false });
+})();
+const halo = new THREE.Sprite(haloMat);
+halo.scale.set(3.5, 4.4, 1);
+halo.position.set(0, 1.5, -1.9);
+scene.add(halo);
+
+// straw on the floor around the shell
+const straw = (() => {
+  const n = 900;
+  const geo = new THREE.CylinderGeometry(0.007, 0.007, 1, 4);
+  geo.rotateZ(Math.PI / 2); // lying along x
+  const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.8, transparent: true, opacity: 0 });
+  const m = new THREE.InstancedMesh(geo, mat, n);
+  const r = rng(31);
+  const o = new THREE.Object3D();
+  const cols = ['#d6a955', '#b98a3e', '#e8c579', '#a77a35', '#c79a4c'].map((c) => new THREE.Color(c));
+  for (let i = 0; i < n; i++) {
+    const a = r() * Math.PI * 2;
+    const d = 0.55 + Math.pow(r(), 0.7) * 2.9;
+    o.position.set(Math.cos(a) * d, 0.012 + r() * 0.03, Math.sin(a) * d * 0.8 + 0.2);
+    o.rotation.set(0, r() * Math.PI, (r() - 0.5) * 0.12);
+    o.scale.set(0.12 + r() * 0.3, 1, 1);
+    o.updateMatrix();
+    m.setMatrixAt(i, o.matrix);
+    m.setColorAt(i, cols[Math.floor(r() * cols.length)]);
+  }
+  m.receiveShadow = true;
+  return m;
+})();
+scene.add(straw);
+
 // climate FX around the egg
 const fx = new THREE.Group();
 scene.add(fx);
@@ -588,7 +643,9 @@ function colorAt(t, keys, out) {
   return out.set(keys[keys.length - 1][1]);
 }
 const OPEN_A = 935, OPEN_B = 985;
-const BASE = new THREE.Vector3(2.15, 0, 0.45); // chick's spot after hatching
+// after hatching the chick stands up in the bottom half of its shell (it stays upright), the rim at its belly
+const BASE = new THREE.Vector3(0, 0.72, 0);
+const MEET_SCALE = 1.2; // a little bigger than at hatching, so it rises well above the rim
 const riderPos = new THREE.Vector3();
 const riderQ = new THREE.Quaternion();
 const riderS = new THREE.Vector3();
@@ -607,7 +664,11 @@ let heroLookEmbryo = false;
 function update(t, time, dt) {
   const aspect = innerWidth / innerHeight;
   const far = aspect < 0.75 ? 1.7 : aspect < 1.1 ? 1.3 : 1;
-  const camX = BASE.x * (aspect < 0.75 ? 0.85 : aspect < 1.1 ? 0.65 : 0.5); // keep the chick in frame on narrow screens
+  // the chick stands in the middle of the scene: on wide screens the camera moves left so it sits right of the text
+  const camX = aspect < 0.75 ? 0 : aspect < 1.1 ? -0.7 : -1.5;
+  // phones: the text sits at the top, so aim higher and the chick lands lower in the frame
+  const meetY = aspect < 0.75 ? 1.55 : 1.3;
+  const meetK = aspect < 0.75 ? 1 : 1.45; // wider screens: step back so the chick in its shell fits under the header
   pointer.x += (pointer.nx - pointer.x) * (1 - Math.exp(-dt * 6));
   pointer.y += (pointer.ny - pointer.y) * (1 - Math.exp(-dt * 6));
 
@@ -626,6 +687,10 @@ function update(t, time, dt) {
   egg.pivot.visible = t < T.line + 60;
   disc.visible = t >= OPEN_A && t < T.line + 60;
   discMat.opacity = warmIn * (1 - sr(t, T.line, T.line + 45));
+  straw.visible = disc.visible;
+  straw.material.opacity = discMat.opacity;
+  halo.visible = t > OPEN_A && t < T.line + 50;
+  haloMat.opacity = 0.62 * warmIn * (1 - sr(t, T.line, T.line + 40));
   line.group.visible = t >= T.line;
   fx.visible = t > T.metrics - 10 && t < T.inc;
   hero.root.visible = t >= T.hatch && t < TOTAL + 100;
@@ -803,7 +868,7 @@ function update(t, time, dt) {
     eggState.crack = kf(h, [[0.08, 0], [0.2, 0.2], [0.32, 0.2], [0.55, 1]]);
     eggState.peck = range(h, 0.19, 0.3);
     eggState.cap = range(h, 0.56, 0.68);
-    eggState.tip = easeIn(range(h, 0.73, 0.8));
+    eggState.tip = 0; // the bottom half stays upright: the chick gets up inside it
     eggState.pipHide = h > 0.74;
 
     const step = Math.floor(eggState.crack * 14 + eggState.peck * 2 + eggState.cap * 2 + eggState.tip * 2);
@@ -835,8 +900,7 @@ function update(t, time, dt) {
   if (!rays.visible) raysMat.opacity = 0;
     riderPos.copy(inside).applyMatrix4(egg.riderMatrix());
     riderM.copy(egg.riderMatrix()).decompose(riderS, riderQ, riderS);
-    const outPos = new THREE.Vector3(BASE.x, 0, BASE.z);
-    hero.root.position.lerpVectors(riderPos, outPos, crawl);
+    hero.root.position.lerpVectors(riderPos, BASE, sr(h, 0.8, 0.93));
     hero.root.quaternion.copy(riderQ).slerp(new THREE.Quaternion(), getUp);
     hero.root.rotation.y += lerp(0, -0.45, crawl);
     scale = lerp(scale, 0.84, getUp);
@@ -849,7 +913,7 @@ function update(t, time, dt) {
     heroP.headYaw = rise * (1 - crawl) * Math.sin(time * 1.3) * 0.4;
     heroP.beak = poke * (0.5 + 0.5 * Math.sin(time * 12)) + bump(h, 0.66, 0.02);
     heroP.blink = lerp(0.7, 0.35, rise) + bump(h, 0.95, 0.015) * 0.6;
-    heroP.walk = crawl * (1 - getUp) * 0.9;
+    heroP.walk = crawl * (1 - getUp) * 0.3; // treads in place, finding its feet
     heroP.sit = (1 - getUp) * rise * 0.5;
     heroP.wing = bump(h, 0.84, 0.03) * 0.6 + bump(h, 0.975, 0.02) * 0.5;
     heroP.flap = bump(h, 0.84, 0.03);
@@ -860,10 +924,10 @@ function update(t, time, dt) {
 
     // camera: close on the egg, then follows the chick out
     const follow = sr(h, 0.74, 0.95);
-    kfv(h, [[0, [0, 1.15, 3.7]], [0.2, [0, 1.2, 3.8]], [0.55, [0, 1.25, 4.0]], [0.7, [0, 1.35, 4.15]], [0.92, [0, 1.35, 5.4]]], tmpA);
+    kfv(h, [[0, [0, 1.15, 3.7]], [0.2, [0, 1.2, 3.8]], [0.55, [0, 1.25, 4.0]], [0.7, [0, 1.4, 4.15]], [0.92, [0, meetY + 0.45, 5.4 * meetK]]], tmpA);
     const insideCab = 1 - range(1 - build, 0.2, 0.45);
     cam.set(tmpA[0] + follow * camX, tmpA[1], lerp(tmpA[2] * far, Math.min(tmpA[2] * far, 4.25), insideCab));
-    kfv(h, [[0, [0, 1, 0]], [0.55, [0, 1.15, 0]], [0.7, [0, 1.15, 0]], [0.92, [0, 0.7, 0]]], tmpA);
+    kfv(h, [[0, [0, 1, 0]], [0.55, [0, 1.15, 0]], [0.7, [0, 1.15, 0]], [0.92, [0, meetY, 0]]], tmpA);
     tgt.set(tmpA[0] + follow * camX, tmpA[1], tmpA[2] + follow * 0.15);
     const shake = (pecking * pattern + pushing) * 0.008;
     cam.x += Math.sin(time * 31) * shake;
@@ -883,9 +947,9 @@ function update(t, time, dt) {
     eggState.crack = 1;
     eggState.peck = 1;
     eggState.cap = 1;
-    eggState.tip = 1;
+    eggState.tip = 0;
     eggState.pipHide = true;
-    eggState.bottomFade = sr(t, T.line - 18, T.line + 10);
+    eggState.bottomFade = sr(t, T.line + 8, T.line + 24); // the shell melts away as the line arrives
     // the down dries and fluffs up in the first moments
     const dry = sr(t, T.alive - 10, T.alive + 70);
     const growUp = sr(t, T.alive - 10, T.alive + 80);
@@ -902,14 +966,16 @@ function update(t, time, dt) {
       const wake = sr(t, T.alive + 40, T.alive + 90); // routine starts once it is dry
       for (const k of Object.keys(createPose())) heroP[k] = (rPose[k] || 0) * w5 * wake;
       heroP.shake = bump(t, T.alive + 25, 12);
-      hero.root.position.set(BASE.x, 0, BASE.z + rPose.z * w5 * wake);
+      heroP.walk = 0; // it stays in its shell: no walking, only small bounces
+      heroP.hop *= 0.35;
+      hero.root.position.copy(BASE);
       hero.root.rotation.y = lerp(-0.45, (rPose.bodyYaw % (Math.PI * 2)) * w5, wake);
-      hero.root.scale.setScalar(lerp(0.84, 1, growUp));
+      hero.root.scale.setScalar(lerp(0.84, MEET_SCALE, growUp));
       hero.setLook({ wet: 1 - dry });
       heroLookEmbryo = true;
       lookInfluence = (now - pointer.last < 2.5 && pointer.has ? 1 : 0) * w5 * wake;
-      cam.set(camX, 1.35, 5.4 * far);
-      tgt.set(camX, 0.7, 0.15);
+      cam.set(camX, meetY + 0.45, 5.4 * meetK * far);
+      tgt.set(camX, meetY, 0.15);
     } else {
       wasInMeet = false;
       lastRoutineT = 0;
@@ -920,8 +986,10 @@ function update(t, time, dt) {
       const st = line.update(q, time, dt, hero);
       if (q < qs) {
         const f = easeInOut(range(q, 0.062, qs - 0.004));
-        hero.root.position.set(lerp(BASE.x, 0, f), Math.sin(Math.PI * f) * 0.85, lerp(BASE.z, LINE_Z, f));
-        hero.root.scale.setScalar(1);
+        // while its shell melts away the chick settles onto the floor, then hops onto the belt
+        const settle = BASE.y * (1 - sr(t, T.line + 10, T.line + 26));
+        hero.root.position.set(lerp(BASE.x, 0, f), lerp(settle, 0, f) + Math.sin(Math.PI * f) * 0.85, lerp(BASE.z, LINE_Z, f));
+        hero.root.scale.setScalar(lerp(MEET_SCALE, 1, f));
         heroP.wing = Math.sin(Math.PI * f) * 0.9;
         heroP.flap = Math.sin(Math.PI * f);
         heroP.squash = bump(f, 0.02, 0.05) * 0.5 + bump(f, 0.98, 0.05) * 0.4;

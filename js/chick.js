@@ -22,9 +22,9 @@ function furTexture(rx, ry) {
     const a = new Float32Array(N * N);
     let seed = 7;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    for (let k = 0; k < 21000; k++) {
+    for (let k = 0; k < 11000; k++) {
       const cx = rnd() * N, cy = rnd() * N;
-      const r = 1.4 + rnd() * 1.9;
+      const r = 2.6 + rnd() * 2.8;
       const v = 0.35 + 0.65 * Math.pow(rnd(), 0.55);
       const R = Math.ceil(r);
       for (let dy = -R; dy <= R; dy++) {
@@ -67,8 +67,8 @@ function furShader(m, f, rimColor) {
         float ndv = clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0);
         float rim = pow(1.0 - ndv, 2.2);
         float lit = dot(outgoingLight, vec3(0.333));
-        outgoingLight *= mix(0.74, 1.05, furF);
-        outgoingLight += rimColor * rim * furF * (0.18 + 1.1 * lit);
+        outgoingLight *= mix(0.8, 1.08, furF);
+        outgoingLight += rimColor * rim * furF * (0.3 + 1.5 * lit);
         #include <opaque_fragment>`);
   };
   m.customProgramCacheKey = () => 'chick-down';
@@ -119,16 +119,17 @@ function scaleTexture() {
   return t;
 }
 
-export function createChick({ color = '#f6cd4f', seed = 1, layers = 16 } = {}) {
+export function createChick({ color = '#ffd25a', seed = 1, layers = 16 } = {}) {
   const root = new THREE.Group();
   const bodyPivot = new THREE.Group();
   root.add(bodyPivot);
 
-  // a day-old broiler chick is pale lemon-yellow: deeper and warmer at the roots, almost cream at the tips
+  // a day-old chick is pale butter-yellow: warmer at the roots, creamy at the tips, glowing where the light shines through
   const baseColor = new THREE.Color(color);
-  const rootColor = new THREE.Color(color).multiplyScalar(0.86);
-  const tipColor = new THREE.Color(color).lerp(new THREE.Color('#fff3c4'), 0.45);
-  const rimColor = new THREE.Color('#fff1c2');
+  // (warm on purpose: the filmic tone mapping pulls pure yellow towards olive)
+  const rootColor = new THREE.Color(color).lerp(new THREE.Color('#f2a93b'), 0.25).multiplyScalar(0.97);
+  const tipColor = new THREE.Color(color).lerp(new THREE.Color('#fff4d2'), 0.6);
+  const rimColor = new THREE.Color('#ffd98a');
   const wetColor = new THREE.Color('#b99044');
   const fluff = std({ color: rootColor, roughness: 0.95, envMapIntensity: 0.35, alphaHash: true });
   const beakMat = std({ color: '#ecc995', roughness: 0.35, envMapIntensity: 0.8, alphaHash: true });
@@ -162,6 +163,8 @@ export function createChick({ color = '#f6cd4f', seed = 1, layers = 16 } = {}) {
       // down is matte: a cheap Lambert material is enough and keeps the many layers fast
       const m = new THREE.MeshLambertMaterial({
         color: shellColor(f, new THREE.Color()),
+        // a little light of its own: down scatters light, so even its shadow side stays soft and warm
+        emissive: shellColor(f, new THREE.Color()).multiplyScalar(0.1 + 0.12 * f),
         alphaMap: tex, alphaTest: 0.1 + Math.pow(f, 1.3) * 0.74,
       });
       furShader(m, f, rimColor);
@@ -201,7 +204,7 @@ export function createChick({ color = '#f6cd4f', seed = 1, layers = 16 } = {}) {
   bodyScaler.add(bodyTilt);
   const body = add(bodyTilt, bodyGeometry(0.5), fluff);
   body.scale.set(0.86, 0.88, 1.1);
-  fur(body, 0.5, 0.085, 4, 2, layers, 0.35, 0.55);
+  fur(body, 0.5, 0.115, 4, 2, layers, 0.14, 0.22); // puffy, standing off the body
 
   // rump and tail down
   const rump = add(bodyTilt, new THREE.SphereGeometry(0.2, 32, 20), fluff);
@@ -213,7 +216,7 @@ export function createChick({ color = '#f6cd4f', seed = 1, layers = 16 } = {}) {
   const neck = add(bodyScaler, new THREE.SphereGeometry(0.27, 40, 28), fluff);
   neck.position.set(0, 1.02, 0.28);
   neck.scale.set(0.95, 1, 1);
-  fur(neck, 0.27, 0.07, 2, 1, Math.ceil(layers * 0.8), 0.3, 0.3);
+  fur(neck, 0.27, 0.095, 2, 1, Math.ceil(layers * 0.8), 0.14, 0.14);
 
   /* head */
   const headPivot = new THREE.Group();
@@ -222,7 +225,7 @@ export function createChick({ color = '#f6cd4f', seed = 1, layers = 16 } = {}) {
   const head = add(headPivot, new THREE.SphereGeometry(0.3, 56, 40), fluff);
   head.position.set(0, 0.17, 0.05);
   head.scale.set(0.95, 0.97, 1.05);
-  fur(head, 0.3, 0.036, 3, 1.5, Math.ceil(layers * 0.8), 0.15, 0.45);
+  fur(head, 0.3, 0.048, 3, 1.5, Math.ceil(layers * 0.8), 0.06, 0.18);
 
   // beak: short, pointed, pale, with the egg tooth on the tip
   const beakGeo = new THREE.ConeGeometry(0.06, 0.15, 24);
@@ -364,6 +367,7 @@ export function createChick({ color = '#f6cd4f', seed = 1, layers = 16 } = {}) {
       m.alphaTest = Math.min(1.01, m.userData.base + (1 - amount) * 0.75);
       shellColor(m.userData.f, m.color, tmp);
       if (wet > 0) m.color.lerp(tmp, wet * 0.65);
+      m.emissive.copy(m.color).multiplyScalar((0.1 + 0.12 * m.userData.f) * (1 - wet * 0.8));
     }
   }
   setLook();
