@@ -933,3 +933,12 @@ dialog .alt a, dialog .consent a { color: var(--accent); }
   .intro-in, .scroll-hint i, .fan, .hint-pill .dot { animation: none; }
   .intro-egg, .intro-egg * { animation-duration: 0.01s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; }
 }
+
+/* "from Uzbekistan": a small flag badge above the first headline and in the footer */
+.origin { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 14px; font: 600 13px/1 var(--body); letter-spacing: 0.04em; color: var(--ink); }
+.ov-hero .origin { padding: 7px 14px 7px 8px; border: 1px solid var(--line); border-radius: 999px; background: rgba(10, 10, 12, 0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.uz-flag { width: 32px; height: 16px; flex: none; border-radius: 3px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2), 0 2px 6px rgba(0, 0, 0, 0.35); }
+.foot .origin { margin: 0; color: inherit; font-weight: 600; }
+.foot .uz-flag { width: 28px; height: 14px; }
+/* phones: the call bar sits at the bottom of the screen — keep the footer (and its flag) above it */
+@media (max-width: 760px) { .foot { padding-bottom: 120px; } }

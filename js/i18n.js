@@ -72,6 +72,8 @@
     'В ПУТЬ': ['YO‘LGA', 'ON THE WAY'],
 
     /* ---------- the story ---------- */
+    'Из Узбекистана': ['O‘zbekistondan', 'From Uzbekistan'],
+    'Сделано в Узбекистане': ['O‘zbekistonda ishlab chiqarilgan', 'Made in Uzbekistan'],
     'Инкубаторий INKUBIO': ['INKUBIO inkubatoriyasi', 'INKUBIO hatchery'],
     'Каждая большая жизнь начинается с маленького чуда': ['Har bir katta hayot kichik mo‘jizadan boshlanadi', 'Every big life begins with a small miracle'],
     'Смотреть как фильм': ['Film kabi ko‘rish', 'Watch as a film'],
