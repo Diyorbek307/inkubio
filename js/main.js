@@ -81,8 +81,8 @@ renderer.debug.checkShaderErrors = new URLSearchParams(location.search).has('deb
 /* Quality tiers: weaker phones get a lighter version of the same story */
 /* ------------------------------------------------------------------ */
 const QUALITY = {
-  high: { dpr: isTouch ? 1.5 : 1.75, samples: 4, bloom: true, shadows: true, shadowSize: 2048, fur: 1, dust: true, grain: true },
-  mid: { dpr: 1.3, samples: 4, bloom: true, shadows: true, shadowSize: 1024, fur: 0.67, dust: true, grain: true },
+  high: { dpr: isTouch ? 1.3 : 1.75, samples: isTouch ? 2 : 4, bloom: true, shadows: true, shadowSize: 2048, fur: 1, dust: true, grain: true },
+  mid: { dpr: isTouch ? 1.15 : 1.3, samples: isTouch ? 2 : 4, bloom: true, shadows: true, shadowSize: 1024, fur: 0.67, dust: true, grain: true },
   low: { dpr: 1, samples: 2, bloom: false, shadows: false, shadowSize: 512, fur: 0.42, dust: false, grain: false },
 };
 const TIERS = ['high', 'mid', 'low'];
@@ -1333,7 +1333,7 @@ function watchFrameRate(rawDt) {
   const fps = perf.frames / perf.time;
   perf.frames = 0;
   perf.time = 0;
-  if (fps < 34 && now - perf.since > 2.5) {
+  if (fps < 42 && now - perf.since > 2) { // step down early: a smooth scroll matters more than detail
     perf.since = now;
     lowerQuality();
   }

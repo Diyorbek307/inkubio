@@ -75,8 +75,8 @@ function furShader(m, f, rimColor) {
 }
 
 // egg-shaped body, fuller at the chest and belly
-function bodyGeometry(r) {
-  const g = new THREE.SphereGeometry(r, 72, 54);
+function bodyGeometry(r, w = 72, h = 54) {
+  const g = new THREE.SphereGeometry(r, w, h);
   const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
@@ -156,6 +156,20 @@ export function createChick({ color = '#ffd25a', seed = 1, layers = 16 } = {}) {
     if (f > 0.5) out.lerp(tipColor, (f - 0.5) * 2 * 0.85);
     return out;
   }
+  // Down layers are see-through and soft-edged: a coarser copy of the surface is enough for them and
+  // saves most of the triangles (each part is drawn once per layer — up to 18 times).
+  const coarse = new Map();
+  function shellGeometry(g) {
+    if (!coarse.has(g)) {
+      const p = g.parameters || {};
+      let c = g;
+      if (g.type === 'SphereGeometry' && p.widthSegments > 24) {
+        c = g.userData.body ? bodyGeometry(p.radius, 36, 26) : new THREE.SphereGeometry(p.radius, Math.min(32, p.widthSegments), Math.min(22, p.heightSegments));
+      }
+      coarse.set(g, c);
+    }
+    return coarse.get(g);
+  }
   function fur(mesh, radius, length, rx, ry, n = layers, droop = 0.35, comb = 0.4) {
     const tex = furTexture(rx, ry);
     for (let i = 1; i <= n; i++) {
@@ -169,7 +183,7 @@ export function createChick({ color = '#ffd25a', seed = 1, layers = 16 } = {}) {
       });
       furShader(m, f, rimColor);
       m.userData = { base: m.alphaTest, f };
-      const shell = new THREE.Mesh(mesh.geometry, m);
+      const shell = new THREE.Mesh(shellGeometry(mesh.geometry), m);
       shell.userData = { f, len: length, radius, droop, comb, i, n };
       shell.raycast = () => {};
       mesh.add(shell);
@@ -202,7 +216,9 @@ export function createChick({ color = '#ffd25a', seed = 1, layers = 16 } = {}) {
   bodyTilt.position.y = 0.7;
   bodyTilt.rotation.x = 0.18; // chicks hold the body forward-tilted
   bodyScaler.add(bodyTilt);
-  const body = add(bodyTilt, bodyGeometry(0.5), fluff);
+  const bodyGeo = bodyGeometry(0.5);
+  bodyGeo.userData.body = true;
+  const body = add(bodyTilt, bodyGeo, fluff);
   body.scale.set(0.86, 0.88, 1.1);
   fur(body, 0.5, 0.115, 4, 2, layers, 0.14, 0.22); // puffy, standing off the body
 
