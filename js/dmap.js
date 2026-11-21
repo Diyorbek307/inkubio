@@ -25,7 +25,8 @@ function init() {
     .sort((a, b) => a.km - b.km);
   const speed = M.speed || 60;
   const hub = M.hub || {};
-  const fmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+  const tx = (s, v) => (window.I18N ? window.I18N.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && k in v ? v[k] : m)));
+  const fmt = new Intl.NumberFormat(window.I18N?.locale || 'ru-RU', { maximumFractionDigits: 0 });
 
   /* ---------- geometry: everything in "road km", polar around the hatchery ---------- */
   const DIRS = { С: 0, ССВ: 22.5, СВ: 45, ВСВ: 67.5, В: 90, ВЮВ: 112.5, ЮВ: 135, ЮЮВ: 157.5, Ю: 180, ЮЮЗ: 202.5, ЮЗ: 225, ЗЮЗ: 247.5, З: 270, ЗСЗ: 292.5, СЗ: 315, ССЗ: 337.5, N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
@@ -86,13 +87,13 @@ function init() {
   zones.forEach((z) => {
     const [x, y] = xy(z.km, labelAng);
     const t = mk('text', { x: x, y: y - 8, class: 'dm-ring-label', 'text-anchor': 'middle' }, base);
-    t.textContent = `${fmt.format(z.km)} км`;
+    t.textContent = tx('{km} км', { km: fmt.format(z.km) });
   });
   // compass
   for (const [l, a] of [['С', 0], ['В', 90], ['Ю', 180], ['З', 270]]) {
     const [x, y] = xy(maxKm * 0.985, a);
     const t = mk('text', { x, y: y + 5, class: 'dm-compass', 'text-anchor': 'middle' }, base);
-    t.textContent = l;
+    t.textContent = tx(l);
   }
   // radar sweep (decorative)
   const sweep = mk('g', { class: 'dm-sweep' }, base);
@@ -106,7 +107,7 @@ function init() {
   // towns: marks keep the same size on screen whatever the map width (.dm-mark scales by --ik)
   const towns = pts.map((p) => {
     const [x, y] = xy(p.km, p.ang);
-    const g = mk('g', { class: 'dm-town', tabindex: 0, role: 'button', 'aria-label': `${p.name}, около ${fmt.format(p.km)} км`, transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})` });
+    const g = mk('g', { class: 'dm-town', tabindex: 0, role: 'button', 'aria-label': tx('{name}, около {km} км', { name: p.name, km: fmt.format(p.km) }), transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})` });
     const m = mk('g', { class: 'dm-mark' }, g);
     mk('circle', { r: 16, class: 'dm-halo' }, m);
     mk('circle', { r: 6.5, class: 'dm-dot' }, m);
@@ -156,7 +157,7 @@ function init() {
   {
     const li = document.createElement('li');
     li.className = 'hub';
-    li.innerHTML = '<i></i><b></b><span>инкубаторий, отсюда выезжает машина</span>';
+    li.innerHTML = `<i></i><b></b><span>${tx('инкубаторий, отсюда выезжает машина')}</span>`;
     li.querySelector('b').textContent = hub.name || SITE.name || 'INKUBIO';
     zl.append(li);
   }
@@ -165,9 +166,9 @@ function init() {
     const sw = document.createElement('i');
     sw.style.background = `rgba(255,201,58,${(zoneAlpha(i) * 3.2).toFixed(2)})`;
     const b = document.createElement('b');
-    b.textContent = `до ${fmt.format(z.km)} км`;
+    b.textContent = tx('до {km} км', { km: fmt.format(z.km) });
     const s = document.createElement('span');
-    s.textContent = z.label || '';
+    s.textContent = tx(z.label || '');
     li.append(sw, b, s);
     zl.append(li);
   });
@@ -180,20 +181,20 @@ function init() {
   if (isDemo) {
     const badge = document.createElement('span');
     badge.className = 'demo-badge';
-    badge.textContent = 'Пример · замените в js/config.js';
+    badge.textContent = tx('Пример · замените в js/config.js');
     $('#dmapTitle').after(badge);
   }
 
   const card = $('#dmapCard');
   const hours = (km) => {
     const h = km / speed + 0.5; // + loading and the hand-over
-    return h < 1.5 ? 'около часа в пути' : `≈ ${fmt.format(Math.round(h))} ч в пути`;
+    return h < 1.5 ? tx('около часа') : tx('≈ {h} ч', { h: fmt.format(Math.round(h)) });
   };
   function orderButton(city) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'pill solid';
-    b.textContent = `Заказать с доставкой в ${city}`;
+    b.textContent = tx('Заказать с доставкой в {city}', { city });
     b.addEventListener('click', () => orderTo(city));
     return b;
   }
@@ -203,16 +204,16 @@ function init() {
     h.textContent = p.name;
     const nums = document.createElement('div');
     nums.className = 'dmap-nums';
-    nums.innerHTML = `<div><b></b><span>по дороге</span></div><div><b></b><span>в пути</span></div>`;
-    nums.children[0].querySelector('b').textContent = `≈ ${fmt.format(p.km)} км`;
-    nums.children[1].querySelector('b').textContent = hours(p.km).replace(' в пути', '');
+    nums.innerHTML = `<div><b></b><span>${tx('по дороге')}</span></div><div><b></b><span>${tx('в пути')}</span></div>`;
+    nums.children[0].querySelector('b').textContent = '≈ ' + tx('{km} км', { km: fmt.format(p.km) });
+    nums.children[1].querySelector('b').textContent = hours(p.km);
     const z = zoneOf(p.km);
     const tag = document.createElement('p');
     tag.className = 'dmap-tag' + (z ? '' : ' far');
-    tag.textContent = z ? z.label : 'Дальше наших зон';
+    tag.textContent = z ? tx(z.label) : tx('Дальше наших зон');
     const note = document.createElement('p');
     note.className = 'dmap-note';
-    note.textContent = z ? z.note || '' : 'Такие поездки обсуждаем отдельно — оставьте заявку, посчитаем.';
+    note.textContent = z ? tx(z.note || '') : tx('Такие поездки обсуждаем отдельно — оставьте заявку, посчитаем.');
     card.append(h, nums, tag, note, orderButton(p.name));
     card.classList.remove('swap');
     void card.offsetWidth;
@@ -224,7 +225,7 @@ function init() {
     h.textContent = name;
     const note = document.createElement('p');
     note.className = 'dmap-note';
-    note.textContent = 'Этого города нет в списке, но, скорее всего, довезём. Оставьте заявку — менеджер посчитает срок и стоимость доставки.';
+    note.textContent = tx('Этого города нет в списке, но, скорее всего, довезём. Оставьте заявку — менеджер посчитает срок и стоимость доставки.');
     card.append(h, note, orderButton(name));
     route.classList.remove('on');
     truck.classList.remove('on');

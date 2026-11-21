@@ -3,6 +3,7 @@
 import { SITE } from './config.js';
 
 const $ = (s) => document.querySelector(s);
+const t = (s, v) => (window.I18N ? window.I18N.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && k in v ? v[k] : m)));
 const demo = new URLSearchParams(location.search).has('demo');
 
 /* ---------- demo content: clearly marked, never shown without ?demo ---------- */
@@ -27,8 +28,12 @@ const DEMO_REVIEWS = [
   { name: 'Имя клиента', place: 'Город, личное подворье', text: 'Пример отзыва. Можно добавить фото клиента — оно появится вместо инициалов.', rating: 4, date: '2026-08' },
 ];
 
-const photos = (Array.isArray(SITE.photos) && SITE.photos.length ? SITE.photos : demo ? DEMO_PHOTOS : []).filter((p) => p && p.src);
-const reviews = (Array.isArray(SITE.reviews) && SITE.reviews.length ? SITE.reviews : demo ? DEMO_REVIEWS : []).filter((r) => r && r.text);
+// texts in config.js may be plain strings or { ru, uz, en }
+const tf = (v) => (v == null || v === '' ? v : t(v));
+const photos = (Array.isArray(SITE.photos) && SITE.photos.length ? SITE.photos : demo ? DEMO_PHOTOS : []).filter((p) => p && p.src)
+  .map((p) => ({ ...p, caption: tf(p.caption), alt: tf(p.alt) }));
+const reviews = (Array.isArray(SITE.reviews) && SITE.reviews.length ? SITE.reviews : demo ? DEMO_REVIEWS : []).filter((r) => r && r.text)
+  .map((r) => ({ ...r, text: tf(r.text), place: tf(r.place) }));
 const isDemoPhotos = !(SITE.photos || []).length && demo;
 const isDemoReviews = !(SITE.reviews || []).length && demo;
 
@@ -38,7 +43,7 @@ const el = (tag, cls, text) => {
   if (text != null) n.textContent = text;
   return n;
 };
-const demoBadge = () => el('span', 'demo-badge', 'Пример · замените в js/config.js');
+const demoBadge = () => el('span', 'demo-badge', t('Пример · замените в js/config.js'));
 
 /* ---------- gallery ---------- */
 if (photos.length) {
@@ -48,7 +53,7 @@ if (photos.length) {
     b.type = 'button';
     b.style.setProperty('--i', i);
     if (p.wide) b.classList.add('wide');
-    b.setAttribute('aria-label', `Открыть фото: ${p.caption || p.alt || i + 1}`);
+    b.setAttribute('aria-label', t('Открыть фото: {name}', { name: p.caption || p.alt || i + 1 }));
     const img = el('img');
     img.src = p.src;
     img.alt = p.alt || p.caption || '';
@@ -129,6 +134,7 @@ if (lb) {
 const MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
 function fmtDate(d) {
   const m = /^(\d{4})-(\d{2})/.exec(d || '');
+  if (m && window.I18N && window.I18N.lang !== 'ru') return new Date(Number(m[1]), Number(m[2]) - 1, 1).toLocaleDateString(window.I18N.locale, { month: 'long', year: 'numeric' });
   return m ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : d || '';
 }
 if (reviews.length) {
@@ -140,7 +146,7 @@ if (reviews.length) {
     if (rating) {
       const stars = el('div', 'rv-stars', '★'.repeat(rating) + '☆'.repeat(5 - rating));
       stars.setAttribute('role', 'img');
-      stars.setAttribute('aria-label', `Оценка ${rating} из 5`);
+      stars.setAttribute('aria-label', t('Оценка {n} из 5', { n: rating }));
       card.append(stars);
     }
     const quote = el('blockquote', 'rv-text');
@@ -150,7 +156,7 @@ if (reviews.length) {
       // a photo from the customer's farm, opens bigger on click
       const shot = el('img', 'rv-shot');
       shot.src = r.photo;
-      shot.alt = `Фото от клиента: ${r.name || ''}`;
+      shot.alt = t('Фото от клиента: {name}', { name: r.name || '' });
       shot.loading = 'lazy';
       card.append(shot);
     }
@@ -166,8 +172,8 @@ if (reviews.length) {
       ava.textContent = (r.name || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
     }
     const who = el('span', 'rv-meta');
-    who.append(el('b', null, r.name || 'Клиент'));
-    const sub = [r.place, r.breed && r.qty ? `${r.breed}, ${r.qty} гол.` : r.breed, fmtDate(r.date)].filter(Boolean).join(' · ');
+    who.append(el('b', null, r.name || t('Клиент')));
+    const sub = [r.place, r.breed && r.qty ? t('{breed}, {n} гол.', { breed: t(r.breed), n: r.qty }) : r.breed && t(r.breed), fmtDate(r.date)].filter(Boolean).join(' · ');
     if (sub) who.append(el('span', null, sub));
     cap.append(ava, who);
     card.append(cap);

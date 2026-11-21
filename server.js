@@ -49,6 +49,7 @@ async function sendTelegram(o) {
     `Желаемая дата: ${o.date ? o.date.split('-').reverse().join('.') : 'не указана'}`,
     ...(o.segment ? [`Тип хозяйства: ${o.segment}`] : []),
     ...(o.city ? [`Город доставки: ${o.city}`] : []),
+    ...(o.lang && o.lang !== 'русский' ? [`Язык клиента: ${o.lang}`] : []),
   ].join('\n');
   const r = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
@@ -70,6 +71,7 @@ function orderMail(o) {
     ['Желаемая дата', o.date ? o.date.split('-').reverse().join('.') : 'не указана'],
     ...(o.segment ? [['Тип хозяйства', o.segment]] : []),
     ...(o.city ? [['Город доставки', o.city]] : []),
+    ...(o.lang && o.lang !== 'русский' ? [['Язык клиента', o.lang]] : []),
     ['Получена', o.receivedAt.toLocaleString('ru-RU')],
   ];
   return {
@@ -99,6 +101,7 @@ function parseOrder(body) {
     date: str(body.date, 10),
     segment: str(body.segment, 60),
     city: str(body.city, 80),
+    lang: ({ uz: 'узбекский', ru: 'русский', en: 'английский' })[body.lang] || '',
   };
   const errors = [];
   if (o.name.length < 2) errors.push('name');
@@ -117,10 +120,10 @@ const csvCell = (v) => {
   return `"${s.replace(/"/g, '""')}"`;
 };
 const CSV_HEAD = ['Дата', 'Имя', 'Телефон', 'Порода', 'Количество', 'Желаемая дата', 'Письмо'];
-const CSV_EXTRA = ['Тип хозяйства', 'Город']; // added later: older files simply lack these header cells
+const CSV_EXTRA = ['Тип хозяйства', 'Город', 'Язык']; // added later: older files simply lack these header cells
 async function saveOrder(o, status) {
   const header = !existsSync(ORDERS_FILE) ? '﻿' + [...CSV_HEAD, ...CSV_EXTRA].map(csvCell).join(';') + '\r\n' : '';
-  const line = [o.receivedAt.toLocaleString('ru-RU'), o.name, o.phone, o.breed, o.qty, o.date, status, o.segment, o.city].map(csvCell).join(';');
+  const line = [o.receivedAt.toLocaleString('ru-RU'), o.name, o.phone, o.breed, o.qty, o.date, status, o.segment, o.city, o.lang].map(csvCell).join(';');
   await appendFile(ORDERS_FILE, header + line + '\r\n', 'utf8');
 }
 

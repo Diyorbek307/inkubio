@@ -3,6 +3,7 @@ import { std } from './mat.js';
 import { createChick, createPose } from './chick.js';
 import { range, kf, easeIn, easeOut, lerp, bump, rng } from './util.js';
 import { drawLogo } from './logo.js';
+const L = (s) => (window.I18N ? window.I18N.t(s) : s); // texts painted on the model, in the page language
 
 /*
  Processing line along +x.
@@ -332,7 +333,7 @@ function cardboardTexture(label = true) {
     x.fillStyle = '#3a2717';
     x.fillText('INKUBIO', 110, 170);
     x.font = '700 24px Manrope, sans-serif';
-    x.fillText('ЖИВЫЕ ЦЫПЛЯТА · ОСТОРОЖНО', 110, 215);
+    x.fillText(L('ЖИВЫЕ ЦЫПЛЯТА · ОСТОРОЖНО'), 110, 215, 390);
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -358,7 +359,7 @@ function truckSideTexture() {
   x.fillText('INKUBIO', 440, 360);
   x.font = '600 64px Manrope, sans-serif';
   x.fillStyle = '#5b636b';
-  x.fillText('Суточные цыплята · Доставка с климат-контролем', 450, 470);
+  x.fillText(L('Суточные цыплята · Доставка с климат-контролем'), 450, 470, 1560);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
@@ -477,7 +478,7 @@ export function createLine({ chickLayers = 6 } = {}) {
     const x = c.getContext('2d');
     x.fillStyle = '#4fb8ff';
     x.font = '800 54px Unbounded, Manrope, sans-serif';
-    x.fillText('ВАКЦИНАЦИЯ', 14, 70);
+    x.fillText(L('ВАКЦИНАЦИЯ'), 14, 70, 484);
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     return new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.225), new THREE.MeshBasicMaterial({ map: t, transparent: true }));

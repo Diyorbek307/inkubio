@@ -89,20 +89,12 @@
         <path fill="none" stroke="#1d5c2f" stroke-width="2.6" stroke-linecap="round" d="M60.5 37q5-5.5 10 0"/>
       </svg>
       <span>INKUBIO</span>
-      <svg viewBox="0 0 240 120" class="brand-flag" role="img" aria-label="Флаг Узбекистана">
-        <title>Узбекистан</title>
-        <defs><path id="uzStar" fill="#fff" d="M0 -4L1.18 -1.62L3.8 -1.24L1.9 0.61L2.35 3.24L0 2L-2.35 3.24L-1.9 0.61L-3.8 -1.24L-1.18 -1.62Z"/></defs>
-        <rect width="240" height="40" fill="#0099b5"/>
-        <rect y="40" width="240" height="40" fill="#fff"/>
-        <rect y="80" width="240" height="40" fill="#1eb53a"/>
-        <rect y="38" width="240" height="3" fill="#ce1126"/>
-        <rect y="79" width="240" height="3" fill="#ce1126"/>
-        <circle cx="34" cy="20" r="14" fill="#fff"/>
-        <circle cx="40" cy="20" r="12.5" fill="#0099b5"/>
-        <use href="#uzStar" x="98" y="10"/><use href="#uzStar" x="114" y="10"/><use href="#uzStar" x="130" y="10"/><use href="#uzStar" x="82" y="22"/><use href="#uzStar" x="98" y="22"/><use href="#uzStar" x="114" y="22"/><use href="#uzStar" x="130" y="22"/><use href="#uzStar" x="66" y="34"/><use href="#uzStar" x="82" y="34"/><use href="#uzStar" x="98" y="34"/><use href="#uzStar" x="114" y="34"/><use href="#uzStar" x="130" y="34"/>
-      </svg>
     </a>
     <div class="top-actions">
+      <div class="lang" id="langBox">
+        <button class="pill ghost lang-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Язык"><span class="flag" aria-hidden="true"></span><b>RU</b></button>
+        <ul class="lang-menu" role="menu" aria-label="Язык"></ul>
+      </div>
       <button class="pill ghost" id="soundBtn" type="button" aria-pressed="true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="mute" d="m16 9 5 6m0-6-5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="label">Звук</span>
@@ -625,9 +617,10 @@
       <label>Желаемая дата<input name="date" type="date" /></label>
       <p class="estimate" id="estimate" hidden></p>
       <p class="order-city" id="orderCity" hidden>Доставка: <b></b><button type="button" aria-label="Убрать город доставки">×</button></p>
-      <label class="consent"><input type="checkbox" name="consent" required /> <span>Согласен на <a href="privacy.html" target="_blank" rel="noopener">обработку персональных данных</a> для связи по заявке</span></label>
+      <label class="consent"><input type="checkbox" name="consent" required /> <span data-i18n-html="consent">Согласен на <a href="privacy.html" target="_blank" rel="noopener">обработку персональных данных</a> для связи по заявке</span></label>
       <input type="hidden" name="segment" />
       <input type="hidden" name="city" />
+      <input type="hidden" name="lang" value="ru" />
       <label class="hp" aria-hidden="true">Сайт<input name="website" tabindex="-1" autocomplete="off" /></label>
       <button class="pill solid big" type="submit">Отправить заявку</button>
       <p class="sent-msg" role="status">Спасибо! Заявка отправлена — мы свяжемся с вами в ближайшее время.</p>
@@ -656,7 +649,7 @@
           fetch(f.action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
             .then(function (r) { return r.json(); })
             .then(function (o) { if (o.ok) f.classList.add('sent'); else throw 0; })
-            .catch(function () { var er = document.getElementById('orderError'); er.textContent = 'Не удалось отправить заявку. Позвоните нам.'; er.classList.add('on'); });
+            .catch(function () { var er = document.getElementById('orderError'); er.textContent = window.I18N ? I18N.t('Не удалось отправить заявку. Позвоните нам.') : 'Не удалось отправить заявку. Позвоните нам.'; er.classList.add('on'); });
         });
       }
       var gl = null;
@@ -676,6 +669,7 @@
     <span class="lb-count" id="lbCount"></span>
   </dialog>
 
+  <script src="js/i18n.js"></script>
   <script type="module" src="js/proof.js"></script>
   <script type="module" src="js/calc.js"></script>
   <script type="module" src="js/dmap.js"></script>

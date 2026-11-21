@@ -3,6 +3,7 @@ import { std } from './mat.js';
 import { eggProfile, shellMaps } from './egg.js';
 import { rng, clamp, easeOut } from './util.js';
 import { drawLogo } from './logo.js';
+const L = (s) => (window.I18N ? window.I18N.t(s) : s); // texts painted on the model, in the page language
 
 function roundedRectShape(x0, y0, x1, y1, r) {
   const s = new THREE.Shape();
@@ -145,7 +146,7 @@ export function createIncubator() {
   const lc = labelC.getContext('2d');
   lc.fillStyle = '#3a4047';
   lc.font = '700 40px Manrope, sans-serif';
-  lc.fillText('ЛОТКИ 1–7 · 147 ЯИЦ', 8, 62);
+  lc.fillText(L('ЛОТКИ 1–7 · 147 ЯИЦ'), 8, 62, 496);
   const labelTex = new THREE.CanvasTexture(labelC);
   labelTex.colorSpace = THREE.SRGBColorSpace;
   const label = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.49), new THREE.MeshBasicMaterial({ map: labelTex, transparent: true }));
@@ -168,7 +169,7 @@ export function createIncubator() {
   pc.fillText('INKUBIO', 214, 140);
   pc.font = '600 40px Manrope, sans-serif';
   pc.fillStyle = '#8b949c';
-  pc.fillText('PRO S-147 · ИНКУБАЦИОННЫЙ ШКАФ', 218, 206);
+  pc.fillText(L('PRO S-147 · ИНКУБАЦИОННЫЙ ШКАФ'), 218, 206, plate.width - 236);
   const plateTex = new THREE.CanvasTexture(plate);
   plateTex.colorSpace = THREE.SRGBColorSpace;
   plateTex.anisotropy = 4;
@@ -199,29 +200,29 @@ export function createIncubator() {
     c.fillRect(0, 0, 1024, 76);
     c.fillStyle = '#7dffb2';
     c.font = '700 34px Manrope, sans-serif';
-    c.fillText('ИНКУБАЦИЯ · ЛОТКИ 1–7', 32, 50);
+    c.fillText(L('ИНКУБАЦИЯ · ЛОТКИ 1–7'), 32, 50, 780);
     c.fillStyle = '#46ff9a';
     c.beginPath(); c.arc(842, 38, 12, 0, Math.PI * 2); c.fill();
-    c.fillText('НОРМА', 866, 50);
+    c.fillText(L('НОРМА'), 866, 50, 148);
     const col = (x, title, value, color) => {
       c.fillStyle = '#6f8a7c';
       c.font = '600 32px Manrope, sans-serif';
-      c.fillText(title, x, 140);
+      c.fillText(title, x, 140, 320);
       c.fillStyle = color;
       c.font = '800 104px Manrope, sans-serif';
       c.fillText(value, x - 4, 250);
     };
-    col(36, 'ТЕМПЕРАТУРА', '37.5°', '#ffd27a');
-    col(392, 'ВЛАЖНОСТЬ', '58%', '#9fd8ff');
-    col(690, 'ДЕНЬ', `${d}/21`, '#ffffff');
+    col(36, L('ТЕМПЕРАТУРА'), '37.5°', '#ffd27a');
+    col(392, L('ВЛАЖНОСТЬ'), '58%', '#9fd8ff');
+    col(690, L('ДЕНЬ'), `${d}/21`, '#ffffff');
     c.fillStyle = '#16231c';
     c.fillRect(36, 318, 952, 22);
     c.fillStyle = '#46ff9a';
     c.fillRect(36, 318, 952 * (d / 21), 22);
     c.fillStyle = '#6f8a7c';
     c.font = '600 30px Manrope, sans-serif';
-    c.fillText('ПОВОРОТ ЛОТКОВ ±45° · КАЖДЫЙ ЧАС', 36, 410);
-    c.fillText('CO₂ 0.3% · ВЕНТИЛЯЦИЯ 3 × 1450 об/мин', 36, 462);
+    c.fillText(L('ПОВОРОТ ЛОТКОВ ±45° · КАЖДЫЙ ЧАС'), 36, 410, 952);
+    c.fillText(L('CO₂ 0.3% · ВЕНТИЛЯЦИЯ 3 × 1450 об/мин'), 36, 462, 952);
     screenTex.needsUpdate = true;
   }
   drawScreen(1);

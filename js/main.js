@@ -39,6 +39,9 @@ const CHAPTERS = [
 ];
 
 const $ = (s) => document.querySelector(s);
+const tr = (s, v) => (window.I18N ? window.I18N.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && k in v ? v[k] : m)));
+const LOCALE = window.I18N?.locale || 'ru-RU';
+const LANG = window.I18N?.lang || 'ru';
 const $$ = (s) => [...document.querySelectorAll(s)];
 
 /* contacts from js/config.js */
@@ -48,7 +51,7 @@ for (const el of $$('[data-site]')) {
   else if (k === 'email') { el.textContent = SITE.email; el.href = `mailto:${SITE.email}`; }
   else if (k === 'telegram') el.href = `https://t.me/${SITE.telegram}`;
   else if (k === 'whatsapp') el.href = `https://wa.me/${SITE.whatsapp}`;
-  else if (SITE[k]) el.textContent = SITE[k];
+  else if (SITE[k]) el.textContent = tr(SITE[k]); // address, hours: a string or { ru, uz, en }
 }
 // analytics only when a counter is set in the config
 function goal(name) {
@@ -399,7 +402,7 @@ const soundBtn = $('#soundBtn');
 function syncSoundBtn() {
   soundBtn.classList.toggle('off', !soundOn());
   soundBtn.setAttribute('aria-pressed', String(soundOn()));
-  soundBtn.querySelector('.label').textContent = soundOn() ? 'Звук' : 'Без звука';
+  soundBtn.querySelector('.label').textContent = soundOn() ? tr('Звук') : tr('Без звука');
 }
 soundBtn.addEventListener('click', () => {
   unlockAudio();
@@ -438,8 +441,8 @@ CHAPTERS.forEach((c, i) => {
   const b = document.createElement('button');
   b.className = 'rail-dot';
   b.type = 'button';
-  b.innerHTML = `<span>${c.name}</span>`;
-  b.setAttribute('aria-label', c.name);
+  b.innerHTML = `<span>${tr(c.name)}</span>`;
+  b.setAttribute('aria-label', tr(c.name));
   b.addEventListener('click', () => {
     const at = i === CHAPTERS.length - 1 ? TOTAL + 100 : c.at + (i === 0 ? 0 : 30);
     window.scrollTo({ top: at * vh, behavior: 'smooth' });
@@ -491,7 +494,7 @@ const hud = {
   flash: $('#flash'),
   hint: $('#hint'),
 };
-hud.hint.textContent = isTouch ? 'Коснитесь цыплёнка' : 'Наведите курсор — цыплёнок посмотрит на вас';
+hud.hint.textContent = isTouch ? tr('Коснитесь цыплёнка') : tr('Наведите курсор — цыплёнок посмотрит на вас');
 const STAGES = [
   [1, 'Формирование эмбриона', 'На поверхности желтка появляется зародыш. Уже на 2-й день начинает биться сердце.'],
   [4, 'Развитие кровеносной системы', 'От зародыша по желтку и оболочке расходятся сосуды — они приносят ему питание и кислород.'],
@@ -772,9 +775,9 @@ function update(t, time, dt) {
     const dd = Math.max(1, Math.round(day));
     hud.day.textContent = dd;
     const st = [...STAGES].reverse().find((s) => dd >= s[0]);
-    if (hud.dayStage.textContent !== st[1]) {
-      hud.dayStage.textContent = st[1];
-      hud.dayDesc.textContent = st[2];
+    if (hud.dayStage.textContent !== tr(st[1])) {
+      hud.dayStage.textContent = tr(st[1]);
+      hud.dayDesc.textContent = tr(st[2]);
     }
     hud.dayBar.style.transform = `scaleX(${day / 21})`;
     hud.dayMarks.forEach((m) => m.classList.toggle('on', dd >= Number(m.dataset.d)));
@@ -945,7 +948,7 @@ function update(t, time, dt) {
         const gy = Math.max(s.y, innerWidth < 760 ? 345 : 150);
         hud.gate.style.transform = `translate(${gx}px, ${gy}px) translate(-50%, -100%)`;
         hud.gateId.textContent = `№ ${String(st.gateActive + 1).padStart(3, '0')}`;
-        hud.gateW.textContent = `${gateWeights[st.gateActive]} г`;
+        hud.gateW.textContent = tr('{w} г', { w: LANG === 'en' ? gateWeights[st.gateActive].replace(',', '.') : gateWeights[st.gateActive] });
       } else hud.gate.style.opacity = 0;
     }
     if (t >= T.line) {
@@ -1047,7 +1050,7 @@ function update(t, time, dt) {
   if (active !== lastChapter) {
     lastChapter = active;
     counterEl.querySelector('b').textContent = String(active + 1).padStart(2, '0');
-    counterEl.querySelector('em').textContent = CHAPTERS[active].name;
+    counterEl.querySelector('em').textContent = tr(CHAPTERS[active].name);
   }
   counterEl.classList.toggle('gone', t > TOTAL + 40);
 }
@@ -1106,10 +1109,10 @@ requestAnimationFrame(function introProgress() {
 const INTRO_PHRASES = [[0, 'Согреваем инкубатор'], [28, 'Переворачиваем яйца'], [62, 'Цыплёнок стучится'], [100, 'Привет!']];
 let introPhrase = INTRO_PHRASES[0][1];
 const introText = $('#introText');
-function setIntroText(t) {
-  introPhrase = t;
+function setIntroText(p) {
+  introPhrase = p;
   introText.classList.add('swap');
-  setTimeout(() => { introText.textContent = t; introText.classList.remove('swap'); }, 220);
+  setTimeout(() => { introText.textContent = tr(p); introText.classList.remove('swap'); }, 220);
 }
 const params = new URLSearchParams(location.search);
 // skip the gate on reloads in the same visit, for links into the middle of the story, and in automated checks
@@ -1355,7 +1358,7 @@ if (finaleEl && tier !== 'low') {
 }
 
 /* estimate in the order form + hatch calendar, both driven by js/config.js */
-const fmtNum = new Intl.NumberFormat('ru-RU');
+const fmtNum = new Intl.NumberFormat(LOCALE);
 const estimateEl = $('#estimate');
 function updateEstimate() {
   const f = $('#orderForm');
@@ -1365,8 +1368,8 @@ function updateEstimate() {
   const sum = price * qty + (SITE.delivery || 0);
   const cur = SITE.currency ? ` ${SITE.currency}` : '';
   estimateEl.hidden = false;
-  estimateEl.innerHTML = `Примерно: <b>${fmtNum.format(sum)}${cur}</b><br>${fmtNum.format(qty)} × ${fmtNum.format(price)}${cur}` +
-    (SITE.delivery ? ` + доставка ${fmtNum.format(SITE.delivery)}${cur}` : ' · доставка рассчитывается отдельно');
+  estimateEl.innerHTML = tr('Примерно: {sum}', { sum: `<b>${fmtNum.format(sum)}${cur}</b>` }) + `<br>${fmtNum.format(qty)} × ${fmtNum.format(price)}${cur}` +
+    (SITE.delivery ? tr(' + доставка {sum}', { sum: fmtNum.format(SITE.delivery) + cur }) : tr(' · доставка рассчитывается отдельно'));
 }
 $('#orderForm').addEventListener('input', updateEstimate);
 const hatches = (SITE.hatches || []).filter((h) => new Date(h.date) >= new Date(new Date().toDateString()));
@@ -1374,9 +1377,9 @@ if (hatches.length) {
   const max = Math.max(...hatches.map((h) => h.left || 0), 1);
   $('#hatchList').innerHTML = hatches.map((h, i) => {
     const d = new Date(h.date);
-    return `<article class="hatch"><time datetime="${h.date}">${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</time>
-      <span>${h.breed}</span>${h.left != null ? `<span class="left">осталось ${fmtNum.format(h.left)} голов</span><div class="bar"><i style="width:${(h.left / max) * 100}%"></i></div>` : ''}
-      <button class="pill ghost" type="button" data-book="${i}">Забронировать</button></article>`;
+    return `<article class="hatch"><time datetime="${h.date}">${d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })}</time>
+      <span>${tr(h.breed)}</span>${h.left != null ? `<span class="left">${tr('осталось {n} голов', { n: fmtNum.format(h.left) })}</span><div class="bar"><i style="width:${(h.left / max) * 100}%"></i></div>` : ''}
+      <button class="pill ghost" type="button" data-book="${i}">${tr('Забронировать')}</button></article>`;
   }).join('');
   $('#hatches').hidden = false;
   $$('[data-book]').forEach((b) => b.addEventListener('click', () => {
@@ -1411,9 +1414,9 @@ const DAYS = {
 const t21cells = $$('.t21-cell');
 function showDay(d, focus = false) {
   const key = Math.max(...Object.keys(DAYS).map(Number).filter((k) => k <= d));
-  $('#t21Day').textContent = d === key ? `День ${d}` : `День ${d} · как и в день ${key}`;
-  $('#t21Head').textContent = DAYS[key][0];
-  $('#t21Text').textContent = DAYS[key][1];
+  $('#t21Day').textContent = d === key ? tr('День {d}', { d }) : tr('День {d} · как и в день {k}', { d, k: key });
+  $('#t21Head').textContent = tr(DAYS[key][0]);
+  $('#t21Text').textContent = tr(DAYS[key][1]);
   t21cells.forEach((c) => {
     const on = Number(c.dataset.day) === d;
     c.setAttribute('aria-selected', String(on));
@@ -1449,9 +1452,9 @@ function showCare(i) {
   body.classList.remove('swap');
   void body.offsetWidth;
   body.classList.add('swap');
-  $('#careTemp').textContent = temp;
-  $('#careHead').textContent = head;
-  $('#careText').textContent = text;
+  $('#careTemp').textContent = tr(temp);
+  $('#careHead').textContent = tr(head);
+  $('#careText').textContent = tr(text);
 }
 $$('.care-tab').forEach((b, i) => b.addEventListener('click', () => showCare(i)));
 if (CARE.length) showCare(0);
@@ -1495,7 +1498,7 @@ const io = new IntersectionObserver((entries) => {
     io.unobserve(el);
     const end = Number(el.dataset.count);
     const t0 = performance.now();
-    const fmt = new Intl.NumberFormat('ru-RU');
+    const fmt = new Intl.NumberFormat(LOCALE);
     const tick = (n) => {
       const k = easeOut(clamp((n - t0) / 1600));
       el.textContent = fmt.format(Math.round(end * k));
@@ -1540,7 +1543,7 @@ orderForm.addEventListener('submit', async (e) => {
   const data = Object.fromEntries(new FormData(f));
   data.qty = Number(data.qty);
   btn.disabled = true;
-  btn.textContent = 'Отправляем…';
+  btn.textContent = tr('Отправляем…');
   try {
     const res = await fetch(f.action, {
       signal: AbortSignal.timeout ? AbortSignal.timeout(20000) : undefined,
@@ -1555,11 +1558,11 @@ orderForm.addEventListener('submit', async (e) => {
     clearTimeout(sentTimer);
     sentTimer = setTimeout(() => { dialog.close(); f.classList.remove('sent'); f.reset(); }, 3200);
   } catch (err) {
-    orderError.textContent = ORDER_ERRORS[err.message] || ORDER_ERRORS.default;
+    orderError.textContent = tr(ORDER_ERRORS[err.message] || ORDER_ERRORS.default);
     orderError.classList.add('on');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Отправить заявку';
+    btn.textContent = tr('Отправить заявку');
   }
 });
 $('#toTop').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));

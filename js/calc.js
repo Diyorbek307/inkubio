@@ -1,13 +1,16 @@
 // Payback calculator for a batch of broiler chicks. Plain DOM, independent of the 3D story.
 import { SITE } from './config.js';
+const t = (s, v) => (window.I18N ? window.I18N.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && k in v ? v[k] : m)));
+const LOCALE = window.I18N?.locale || 'ru-RU';
+const LANG = window.I18N?.lang || 'ru';
 
 const form = document.querySelector('#calcForm');
 if (form) init();
 
 function init() {
   const $ = (s) => document.querySelector(s);
-  const fmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
-  const fmt1 = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
+  const fmt = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
+  const fmt1 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 });
   const cur = SITE.currency ? ` ${SITE.currency}` : '';
   const C = SITE.calc || {};
 
@@ -53,7 +56,7 @@ function init() {
     const n = parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.').replace(/[^\d.]/g, ''));
     return Number.isFinite(n) ? n : null;
   };
-  const days = (n) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'день' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'дня' : 'дней'}`;
+  const days = (n) => LANG !== 'ru' ? t('{n} дней', { n }) : `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'день' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'дня' : 'дней'}`;
   const heads = (n) => (n % 10 === 1 && n % 100 !== 11 ? 'цыплёнка' : 'цыплят');
 
   // remembered for this visitor only (their own prices), never sent anywhere
@@ -71,7 +74,7 @@ function init() {
   }
   if (!saved.chick && SITE.prices?.[form.breed.value] != null) form.chick.value = SITE.prices[form.breed.value];
   form.qty.value = toSlider(num(form.qtyN.value) || 500);
-  $('#calcCur').textContent = SITE.currency ? `в ${SITE.currency}` : '';
+  $('#calcCur').textContent = SITE.currency ? t('в {cur}', { cur: SITE.currency }) : '';
 
   const signed = (v, f) => (v < 0 ? '−' : '') + f.format(Math.abs(v));
   const setW =(el, part) => (el.style.width = `${Math.max(0, part * 100).toFixed(2)}%`);
@@ -86,8 +89,8 @@ function init() {
     const w = num(form.weight.value) || g.w;
     const fcr = num(form.fcr.value) || g.fcr;
     const carcass = form.mode.value === 'carcass';
-    form.weight.placeholder = `авто: ${fmt1.format(g.w)}`;
-    form.fcr.placeholder = `авто: ${fmt1.format(Math.round(g.fcr * 100) / 100)}`;
+    form.weight.placeholder = t('авто: {v}', { v: fmt1.format(g.w) });
+    form.fcr.placeholder = t('авто: {v}', { v: fmt1.format(Math.round(g.fcr * 100) / 100) });
     $('#cDaysOut').textContent = days(day);
 
     const alive = Math.round(qty * surv);
@@ -98,9 +101,9 @@ function init() {
 
     $('#cAlive').textContent = fmt.format(alive);
     $('#cWeight').textContent = fmt.format(sold);
-    $('#cWeightLbl').textContent = carcass ? 'кг мяса тушкой' : 'кг живого веса';
+    $('#cWeightLbl').textContent = carcass ? t('кг мяса тушкой') : t('кг живого веса');
     $('#cFeed').textContent = fmt.format(feed);
-    $('#cFeedLbl').textContent = `кг корма · ≈ ${fmt.format(Math.ceil(feed / BAG))} меш. по ${BAG} кг`;
+    $('#cFeedLbl').textContent = t('кг корма · ≈ {bags} меш. по {bag} кг', { bags: fmt.format(Math.ceil(feed / BAG)), bag: BAG });
 
     const chick = num(form.chick.value);
     const feedP = num(form.feed.value);
@@ -125,29 +128,29 @@ function init() {
       if (sale != null) {
         const profit = rev - cost;
         big.dataset.state = profit >= 0 ? 'plus' : 'minus';
-        $('#calcBigLabel').textContent = profit >= 0 ? 'Прибыль с партии' : 'Убыток с партии';
+        $('#calcBigLabel').textContent = profit >= 0 ? t('Прибыль с партии') : t('Убыток с партии');
         $('#calcProfit').textContent = (profit < 0 ? '−' : '') + fmt.format(Math.abs(profit)) + cur;
         const per = profit / qty;
-        $('#calcProfitSub').textContent = `${signed(per, Math.abs(per) < 100 ? fmt1 : fmt)}${cur} с каждого цыплёнка · отдача ${signed((profit / cost) * 100, fmt)} % на вложения`;
+        $('#calcProfitSub').textContent = t('{per}{cur} с каждого цыплёнка · отдача {roi} % на вложения', { per: signed(per, Math.abs(per) < 100 ? fmt1 : fmt), cur, roi: signed((profit / cost) * 100, fmt) });
       } else {
         big.dataset.state = 'cost';
-        $('#calcBigLabel').textContent = 'Расходы на партию';
+        $('#calcBigLabel').textContent = t('Расходы на партию');
         $('#calcProfit').textContent = fmt.format(cost) + cur;
-        $('#calcProfitSub').textContent = `Окупится при цене продажи от ${fmt.format(perKg)}${cur} за кг ${carcass ? 'тушки' : 'живого веса'}`;
+        $('#calcProfitSub').textContent = t(carcass ? 'Окупится при цене продажи от {p}{cur} за кг тушки' : 'Окупится при цене продажи от {p}{cur} за кг живого веса', { p: fmt.format(perKg), cur });
       }
     } else {
       big.dataset.state = 'empty';
       $('#cPerKg').textContent = '—';
       $('#calcBars').hidden = true;
-      $('#calcBigLabel').textContent = 'Прибыль с партии';
+      $('#calcBigLabel').textContent = t('Прибыль с партии');
       $('#calcProfit').textContent = '—';
-      $('#calcProfitSub').textContent = 'Впишите цену цыплёнка и корма — посчитаем расходы, а с ценой продажи и прибыль';
+      $('#calcProfitSub').textContent = t('Впишите цену цыплёнка и корма — посчитаем расходы, а с ценой продажи и прибыль');
     }
 
     const btn = $('#calcOrder');
     btn.dataset.breed = breed;
     btn.dataset.qty = String(qty);
-    btn.textContent = `Заказать ${fmt.format(qty)} ${heads(qty)} ${breed}`;
+    btn.textContent = LANG === 'ru' ? `Заказать ${fmt.format(qty)} ${heads(qty)} ${breed}` : t('Заказать {n} цыплят {breed}', { n: fmt.format(qty), breed: t(breed) });
 
     try {
       const out = {};

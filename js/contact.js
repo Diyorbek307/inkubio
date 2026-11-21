@@ -29,6 +29,7 @@ function initStatus() {
   const toMin = (s) => { const [h, m] = String(s).split(':').map(Number); return h * 60 + (m || 0); };
   const from = toMin(S.from), to = toMin(S.to);
   const DAYS = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  const t = (s, v) => (window.I18N ? window.I18N.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && k in v ? v[k] : m)));
   const SHORT = ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
   let fmt;
   try {
@@ -41,11 +42,11 @@ function initStatus() {
     const p = Object.fromEntries(fmt.formatToParts(new Date()).map((x) => [x.type, x.value]));
     const day = DAYS[p.weekday] || 1;
     const min = Number(p.hour) * 60 + Number(p.minute);
-    if (S.days.includes(day) && min >= from && min < to) return { open: true, text: 'На связи сейчас' };
-    if (S.days.includes(day) && min < from) return { open: false, text: `Ответим с ${hhmm}` };
+    if (S.days.includes(day) && min >= from && min < to) return { open: true, text: t('На связи сейчас') };
+    if (S.days.includes(day) && min < from) return { open: false, text: t('Ответим с {time}', { time: hhmm }) };
     for (let k = 1; k <= 7; k++) {
       const d = ((day - 1 + k) % 7) + 1;
-      if (S.days.includes(d)) return { open: false, text: k === 1 ? `Ответим завтра с ${hhmm}` : `Ответим в ${SHORT[d]} с ${hhmm}` };
+      if (S.days.includes(d)) return { open: false, text: k === 1 ? t('Ответим завтра с {time}', { time: hhmm }) : t('Ответим в {day} с {time}', { day: t(SHORT[d]), time: hhmm }) };
     }
     return { open: false, text: '' };
   }
