@@ -292,8 +292,39 @@ const line = createLine({ chickLayers: Math.max(3, Math.round(5 * Q.fur)) });
 scene.add(line.group);
 
 // floor for the "meeting" scene
+// hay bedding: thousands of short curved stalks in straw colours over dark earth
+function hayTexture() {
+  const N = 1024;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const x = c.getContext('2d');
+  x.fillStyle = '#2b1e12';
+  x.fillRect(0, 0, N, N);
+  const r = rng(91);
+  const cols = ['#c9a25a', '#b48a45', '#dcbc78', '#9c7437', '#e6cf96', '#a88445'];
+  x.lineCap = 'round';
+  for (let layer = 0; layer < 3; layer++) {
+    for (let i = 0; i < 4200; i++) {
+      const x0 = r() * N, y0 = r() * N, a = r() * Math.PI * 2, len = 18 + r() * 70, bend = (r() - 0.5) * 30;
+      x.strokeStyle = cols[Math.floor(r() * cols.length)];
+      x.globalAlpha = 0.35 + layer * 0.2 + r() * 0.3;
+      x.lineWidth = 1 + r() * 2.2;
+      x.beginPath();
+      x.moveTo(x0, y0);
+      x.quadraticCurveTo(x0 + Math.cos(a) * len / 2 + bend, y0 + Math.sin(a) * len / 2 - bend, x0 + Math.cos(a) * len, y0 + Math.sin(a) * len);
+      x.stroke();
+    }
+  }
+  x.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(3, 3);
+  t.anisotropy = 8;
+  return t;
+}
 const discMat = new THREE.MeshStandardMaterial({
-  color: '#3a2a1b', roughness: 0.92, transparent: true,
+  map: hayTexture(), color: '#ffffff', roughness: 0.95, transparent: true,
   alphaMap: radialTexture([[0, '#fff'], [0.55, '#fff'], [1, '#000']]),
 });
 const disc = new THREE.Mesh(new THREE.CircleGeometry(7, 64), discMat);
@@ -333,20 +364,21 @@ scene.add(halo);
 
 // straw on the floor around the shell
 const straw = (() => {
-  const n = 900;
-  const geo = new THREE.CylinderGeometry(0.007, 0.007, 1, 4);
+  const n = 1400;
+  const geo = new THREE.CylinderGeometry(0.0055, 0.0055, 1, 4);
   geo.rotateZ(Math.PI / 2); // lying along x
   const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.8, transparent: true, opacity: 0 });
   const m = new THREE.InstancedMesh(geo, mat, n);
   const r = rng(31);
   const o = new THREE.Object3D();
-  const cols = ['#d6a955', '#b98a3e', '#e8c579', '#a77a35', '#c79a4c'].map((c) => new THREE.Color(c));
+  const cols = ['#d6a955', '#b98a3e', '#e8c579', '#a77a35', '#c79a4c', '#f0d898', '#8f6a30'].map((c) => new THREE.Color(c));
   for (let i = 0; i < n; i++) {
     const a = r() * Math.PI * 2;
     const d = 0.55 + Math.pow(r(), 0.7) * 2.9;
     o.position.set(Math.cos(a) * d, 0.012 + r() * 0.03, Math.sin(a) * d * 0.8 + 0.2);
     o.rotation.set(0, r() * Math.PI, (r() - 0.5) * 0.12);
-    o.scale.set(0.12 + r() * 0.3, 1, 1);
+    o.scale.set(0.08 + r() * 0.26, 1, 1);
+    o.rotation.z += (r() - 0.5) * 0.5; // some stalks rest on others
     o.updateMatrix();
     m.setMatrixAt(i, o.matrix);
     m.setColorAt(i, cols[Math.floor(r() * cols.length)]);
@@ -355,6 +387,17 @@ const straw = (() => {
   return m;
 })();
 scene.add(straw);
+
+// soft contact shadows: they keep the shell and the chick sitting on the hay instead of floating
+const contactTex = radialTexture([[0, 'rgba(255,255,255,1)'], [0.45, 'rgba(255,255,255,0.55)'], [1, 'rgba(255,255,255,0)']]);
+const softShadowMat = () => new THREE.MeshBasicMaterial({ color: '#000000', alphaMap: contactTex, transparent: true, depthWrite: false, opacity: 0 });
+const shellShadow = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 2.0), softShadowMat());
+shellShadow.rotation.x = -Math.PI / 2;
+shellShadow.position.set(0, 0.015, 0.05);
+const chickShadow = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.2), softShadowMat());
+chickShadow.rotation.x = -Math.PI / 2;
+shellShadow.renderOrder = chickShadow.renderOrder = 1;
+scene.add(shellShadow, chickShadow);
 
 // climate FX around the egg
 const fx = new THREE.Group();
@@ -698,6 +741,12 @@ function update(t, time, dt) {
   discMat.opacity = warmIn * (1 - sr(t, T.line, T.line + 45));
   straw.visible = disc.visible;
   straw.material.opacity = discMat.opacity;
+  shellShadow.visible = chickShadow.visible = disc.visible;
+  shellShadow.material.opacity = 0.62 * discMat.opacity * (1 - sr(t, T.line + 8, T.line + 24)); // goes with the shell
+  // under the chick: follows it on the floor, fades while it is in the shell or in the air
+  chickShadow.position.set(hero.root.position.x, 0.02, hero.root.position.z + 0.05);
+  chickShadow.scale.setScalar(hero.root.scale.x);
+  chickShadow.material.opacity = 0.5 * discMat.opacity * clamp(1 - hero.root.position.y * 1.6);
   halo.visible = t > OPEN_A && t < T.line + 50;
   haloMat.opacity = 0.62 * warmIn * (1 - sr(t, T.line, T.line + 40));
   line.group.visible = t >= T.line;

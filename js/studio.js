@@ -34,7 +34,8 @@ export function createStudioEnvironment(renderer) {
   return tex;
 }
 
-// Vignette, film grain and a touch of lens fringing, applied after tone mapping.
+// Cinematic grade (gentle S-curve, warm highlights, cool shadows), vignette, film grain and a touch of
+// lens fringing, applied after tone mapping.
 export const FilmShader = {
   uniforms: {
     tDiffuse: { value: null },
@@ -42,6 +43,7 @@ export const FilmShader = {
     grain: { value: 0.035 },
     vignette: { value: 0.5 },
     aberration: { value: 0.0015 },
+    grade: { value: 1 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -49,7 +51,7 @@ export const FilmShader = {
   `,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
-    uniform float time, grain, vignette, aberration;
+    uniform float time, grain, vignette, aberration, grade;
     varying vec2 vUv;
     float rand(vec2 co) { return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
     void main() {
@@ -60,6 +62,14 @@ export const FilmShader = {
       c.r = texture2D(tDiffuse, vUv + off).r;
       c.g = texture2D(tDiffuse, vUv).g;
       c.b = texture2D(tDiffuse, vUv - off).b;
+      // grade: contrast curve, warm light / cool shade, a little richer colour
+      const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+      vec3 cc = clamp(c, 0.0, 1.0);
+      c = mix(c, cc * cc * (3.0 - 2.0 * cc), 0.28 * grade);
+      float l = dot(c, LUMA);
+      vec3 tone = mix(vec3(0.95, 0.99, 1.05), vec3(1.05, 1.0, 0.93), smoothstep(0.12, 0.75, l));
+      c = mix(c, c * tone, grade);
+      c = mix(vec3(dot(c, LUMA)), c, 1.0 + 0.1 * grade);
       c *= mix(1.0, smoothstep(0.95, 0.12, r2 * 1.7), vignette);
       c += (rand(vUv * vec2(1213.1, 917.7) + fract(time * 7.13)) - 0.5) * grain;
       gl_FragColor = vec4(c, 1.0);
