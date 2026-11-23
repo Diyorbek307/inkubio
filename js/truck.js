@@ -349,3 +349,80 @@ export function createTruck({ x0, x1, y0, y1, z, width }) {
   }
   return { group: truck, door, wheels, cabFront: cx1 };
 }
+
+/*
+ Warehouse forklift: yellow body, counterweight, overhead guard, mast with forks, an amber beacon.
+ Faces +x (forks in front). Returns the group and an update(time, speed) that spins wheels and blinks the beacon.
+*/
+export function createForklift({ cargo = null } = {}) {
+  const f = new THREE.Group();
+  const yellow = new THREE.MeshPhysicalMaterial({ color: '#f2b01e', roughness: 0.38, metalness: 0.2, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+  const dark = new THREE.MeshStandardMaterial({ color: '#25282b', roughness: 0.6, metalness: 0.4 });
+  const steel = new THREE.MeshStandardMaterial({ color: '#8e979f', roughness: 0.35, metalness: 0.85 });
+  const seatMat = new THREE.MeshStandardMaterial({ color: '#141516', roughness: 0.75 });
+  const tyreMat = new THREE.MeshStandardMaterial({ color: '#141516', roughness: 0.9, bumpMap: treadTexture(), bumpScale: 2 });
+  const beaconMat = new THREE.MeshBasicMaterial({ color: '#ffb12a', toneMapped: false, transparent: true });
+  const add = (geo, mat, x, y, z, parent = f) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    parent.add(m);
+    return m;
+  };
+  // body and counterweight (the rounded back)
+  add(roundBox(1.9, 0.75, 1.15, 0.14), yellow, -0.15, 0.62, 0);
+  add(roundBox(0.55, 0.85, 1.12, 0.22), dark, -1.0, 0.75, 0);
+  add(roundBox(0.7, 0.12, 0.9, 0.05), dark, -0.25, 1.02, 0); // floor plate
+  // seat and steering column
+  add(roundBox(0.5, 0.12, 0.55, 0.05), seatMat, -0.55, 1.15, 0);
+  add(roundBox(0.12, 0.55, 0.5, 0.05), seatMat, -0.8, 1.42, 0);
+  const col = add(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 10), dark, 0.15, 1.3, 0);
+  col.rotation.z = 0.5;
+  const wheel = add(new THREE.TorusGeometry(0.17, 0.025, 8, 24), dark, 0.02, 1.58, 0);
+  wheel.rotation.set(0, Math.PI / 2, 0.5);
+  // overhead guard: four posts and a slatted roof
+  for (const [x, z] of [[0.35, 0.5], [0.35, -0.5], [-0.95, 0.5], [-0.95, -0.5]]) add(new THREE.BoxGeometry(0.07, 1.35, 0.07), dark, x, 1.65, z);
+  add(new THREE.BoxGeometry(1.42, 0.06, 1.08), dark, -0.3, 2.34, 0);
+  for (let i = -2; i <= 2; i++) add(new THREE.BoxGeometry(1.3, 0.03, 0.05), steel, -0.3, 2.38, i * 0.2);
+  // beacon on the roof
+  add(new THREE.CylinderGeometry(0.09, 0.1, 0.06, 14), dark, -0.85, 2.4, 0);
+  const beacon = add(new THREE.SphereGeometry(0.08, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), beaconMat, -0.85, 2.43, 0);
+  beacon.castShadow = false;
+  // mast with two channels, carriage and forks
+  for (const z of [-0.38, 0.38]) add(new THREE.BoxGeometry(0.12, 2.3, 0.1), steel, 0.95, 1.3, z);
+  add(new THREE.BoxGeometry(0.1, 0.08, 0.86), steel, 0.95, 2.42, 0);
+  const carriage = new THREE.Group();
+  carriage.position.set(1.04, 0.2, 0);
+  f.add(carriage);
+  add(new THREE.BoxGeometry(0.06, 0.5, 0.9), dark, 0, 0.25, 0, carriage);
+  for (const z of [-0.26, 0.26]) add(new THREE.BoxGeometry(1.15, 0.05, 0.11), steel, 0.58, 0.02, z, carriage);
+  if (cargo) { cargo.position.set(0.62, 0.05, 0); carriage.add(cargo); }
+  // wheels: big drive wheels under the mast, smaller steer wheels at the back
+  const wheels = [];
+  const front = tyreGeometry(0.32, 0.2, 0.26);
+  const rear = tyreGeometry(0.25, 0.15, 0.22);
+  const hubMat = new THREE.MeshStandardMaterial({ color: '#c9a21e', roughness: 0.4, metalness: 0.5 });
+  for (const [x, geo, r] of [[0.55, front, 0.32], [-0.95, rear, 0.25]]) {
+    for (const s of [-1, 1]) {
+      const w = new THREE.Group();
+      w.position.set(x, r, s * 0.52);
+      f.add(w);
+      add(geo, tyreMat, 0, 0, 0, w);
+      const hub = add(new THREE.CylinderGeometry(r * 0.6, r * 0.6, 0.2, 16), hubMat, 0, 0, 0, w);
+      hub.rotation.x = Math.PI / 2;
+      wheels.push({ g: w, r });
+    }
+  }
+  // INKUBIO plate on the counterweight
+  const plate = add(new THREE.PlaneGeometry(0.5, 0.18), new THREE.MeshBasicMaterial({
+    map: tex(256, 92, (x, W, H) => { x.fillStyle = '#16181b'; x.fillRect(0, 0, W, H); drawLogo(x, 10, 10, 72); x.fillStyle = '#f2b01e'; x.font = '800 40px Manrope, sans-serif'; x.fillText('INKUBIO', 76, 62, 170); }),
+  }), -1.0, 0.92, 0.565);
+  plate.castShadow = false;
+  function update(time, travelled, lift = 0) {
+    for (const w of wheels) w.g.rotation.z = -travelled / w.r;
+    beaconMat.opacity = 0.45 + 0.55 * Math.max(0, Math.sin(time * 7));
+    carriage.position.y = 0.2 + lift;
+  }
+  return { group: f, update };
+}

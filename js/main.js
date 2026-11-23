@@ -247,6 +247,41 @@ contact.rotation.x = -Math.PI / 2;
 contact.position.y = -0.89;
 studio.add(contact);
 
+// a beam of warm light from above onto the egg, like a single studio spot, and its pool on the floor
+const spotMat = new THREE.ShaderMaterial({
+  uniforms: { color: { value: new THREE.Color('#ffe0ad') }, opacity: { value: 0 } },
+  vertexShader: /* glsl */ `
+    varying float vY; varying vec3 vN; varying vec3 vV;
+    void main() {
+      vY = uv.y;
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vN = normalize(normalMatrix * normal);
+      vV = normalize(-mv.xyz);
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: /* glsl */ `
+    uniform vec3 color; uniform float opacity;
+    varying float vY; varying vec3 vN; varying vec3 vV;
+    void main() {
+      float core = pow(abs(dot(normalize(vN), normalize(vV))), 2.2); // soft edges, denser in the middle
+      float fall = smoothstep(0.0, 0.75, vY) * (0.35 + 0.65 * vY);   // brighter near the lamp
+      gl_FragColor = vec4(color * core * fall * opacity, 1.0);
+    }`,
+  transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+});
+const spot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 2.3, 9.4, 48, 1, true), spotMat);
+spot.position.set(0, -0.9 + 4.7, -0.1);
+spot.renderOrder = 3;
+studio.add(spot);
+const poolMat = new THREE.MeshBasicMaterial({
+  map: radialTexture([[0, 'rgba(255,214,150,0.9)'], [0.5, 'rgba(255,190,110,0.3)'], [1, 'rgba(0,0,0,0)']]),
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0,
+});
+const pool = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 5.2), poolMat);
+pool.rotation.x = -Math.PI / 2;
+pool.position.y = -0.885;
+studio.add(pool);
+
 const dustN = 420;
 const dustPos = new Float32Array(dustN * 3);
 const dustSeed = [];
@@ -826,6 +861,10 @@ function update(t, time, dt) {
     const lift = egg.pivot.position.y - 1;
     contact.scale.setScalar((1 - lift * 1.6) * lerp(0.86, 1, intro));
     contactMat.opacity = (0.85 - lift * 2.5) * intro;
+    const spotOn = intro * (1 - sr(t, 70, 135));
+    spotMat.uniforms.opacity.value = 0.32 * spotOn * (0.94 + 0.06 * Math.sin(time * 2.3));
+    poolMat.opacity = 0.42 * spotOn;
+    spot.visible = pool.visible = spotOn > 0.002;
 
     const z = lerp(10, 5.8, intro) - sr(t, 0, 110) * 0.3 + m * 2.0;
     cam.set(Math.sin(time * 0.17) * 0.2, 1.05 + m * 0.15, z * far);

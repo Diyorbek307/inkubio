@@ -3,7 +3,7 @@ import { std } from './mat.js';
 import { createChick, createPose } from './chick.js';
 import { range, kf, easeIn, easeOut, lerp, bump, rng } from './util.js';
 import { drawLogo } from './logo.js';
-import { createTruck } from './truck.js';
+import { createTruck, createForklift } from './truck.js';
 const L = (s) => (window.I18N ? window.I18N.t(s) : s); // texts painted on the model, in the page language
 
 /*
@@ -770,6 +770,30 @@ export function createLine({ chickLayers = 6 } = {}) {
     g.add(closed, pal);
   }
 
+  // a forklift with a wrapped pallet drives up and down the aisle between the line and the racks
+  const fork = (() => {
+    const cargo = new THREE.Group();
+    const pal = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.14, 1.0), new THREE.MeshStandardMaterial({ map: palletTexture(), roughness: 0.92 }));
+    pal.position.y = 0.07;
+    cargo.add(pal);
+    const side = new THREE.MeshStandardMaterial({ map: cartonTexture(), roughness: 0.86 });
+    const top = new THREE.MeshStandardMaterial({ map: cartonTopTexture(), roughness: 0.8 });
+    const cg = new THREE.BoxGeometry(0.58, 0.42, 0.48);
+    for (let ly = 0; ly < 2; ly++) for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
+      const c = new THREE.Mesh(cg, [side, side, top, top, side, side]);
+      c.position.set(-0.29 + a * 0.58, 0.14 + 0.21 + ly * 0.42, -0.245 + b * 0.49);
+      c.castShadow = c.receiveShadow = true;
+      cargo.add(c);
+    }
+    const film = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.86, 1.0), new THREE.MeshStandardMaterial({ color: '#eef4f8', roughness: 0.12, metalness: 0.1, transparent: true, opacity: 0.14, depthWrite: false }));
+    film.position.y = 0.14 + 0.43;
+    cargo.add(film);
+    const fl = createForklift({ cargo });
+    fl.group.position.set(0, -2.6, -7.75);
+    g.add(fl.group);
+    return fl;
+  })();
+
   // truck: a refrigerated delivery truck in brand colours (js/truck.js)
   const TX0 = 19.2, TX1 = 30.0, TY0 = -1.75, TY1 = 2.0, TZ = LINE_Z, TWID = 3.0;
   const { group: truck, door, wheels } = createTruck({ x0: TX0, x1: TX1, y0: TY0, y1: TY1, z: TZ, width: TWID });
@@ -823,6 +847,10 @@ export function createLine({ chickLayers = 6 } = {}) {
   const boxPos = [];
   function update(q, time, dt, hero) {
     atmo.update(time);
+    // forklift: smooth back-and-forth along the aisle (it reverses at the ends, as forklifts do)
+    const fx = 4 + 30 * Math.sin(time * 0.065);
+    fork.group.position.x = fx;
+    fork.update(time, fx, 0.12 + 0.1 * Math.sin(time * 0.4));
     // belt motion
     const moving = range(q, Q_START, Q_START + 0.01);
     beltTexA.offset.x = -Math.max(0, q - Q_START) * V / 1.2;
