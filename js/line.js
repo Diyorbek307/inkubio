@@ -57,7 +57,7 @@ const canvasTex = (w, h, draw, { srgb = true, rx = 1, ry = 1 } = {}) => {
 // polished concrete: soft blotches, fine speckle, saw-cut joints every 6 m, faint tyre marks
 function concreteTexture() {
   return canvasTex(1024, 1024, (x, N) => {
-    x.fillStyle = '#b3b7ba';
+    x.fillStyle = '#a3a8ac';
     x.fillRect(0, 0, N, N);
     const r = rng(23);
     for (let i = 0; i < 260; i++) {
@@ -494,6 +494,100 @@ function fibreBump() {
   }, { srgb: false, rx: 3, ry: 3 });
 }
 
+/*
+ Atmosphere of the hall: sunbeams from the high windows and the open gate, a warm patch of sun on the
+ floor at the gate, and dust floating in the air. All additive and cheap: a handful of quads and points.
+*/
+function buildAtmosphere(g) {
+  const FY = -2.6, BZ = -15, EX = 46;
+  const group = new THREE.Group();
+  g.add(group);
+  // soft beam: bright at the window, fading towards the floor and at both edges
+  const beamTex = canvasTex(64, 256, (x, W, H) => {
+    const v = x.createLinearGradient(0, 0, 0, H);
+    v.addColorStop(0, 'rgba(255,244,220,0.95)');
+    v.addColorStop(0.55, 'rgba(255,236,205,0.35)');
+    v.addColorStop(1, 'rgba(255,230,200,0)');
+    x.fillStyle = v;
+    x.fillRect(0, 0, W, H);
+    x.globalCompositeOperation = 'destination-in';
+    const h = x.createLinearGradient(0, 0, W, 0);
+    h.addColorStop(0, 'rgba(0,0,0,0)');
+    h.addColorStop(0.3, 'rgba(0,0,0,1)');
+    h.addColorStop(0.7, 'rgba(0,0,0,1)');
+    h.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = h;
+    x.fillRect(0, 0, W, H);
+  });
+  const beamMat = new THREE.MeshBasicMaterial({ map: beamTex, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false });
+  // a quad from a window strip (top) down to a strip on the floor (bottom)
+  const beam = (top, bottom, w, alongZ = false) => {
+    const geo = new THREE.BufferGeometry();
+    const ox = alongZ ? 0 : w / 2, oz = alongZ ? w / 2 : 0;
+    const p = [top[0] - ox, top[1], top[2] - oz, top[0] + ox, top[1], top[2] + oz, bottom[0] - ox, bottom[1], bottom[2] - oz, bottom[0] + ox, bottom[1], bottom[2] + oz];
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 0, 0, 1, 0], 2));
+    geo.setIndex([0, 2, 1, 1, 2, 3]);
+    const m = new THREE.Mesh(geo, beamMat);
+    m.renderOrder = 2;
+    group.add(m);
+    return m;
+  };
+  // the high window band on the back wall: slanting beams every bay
+  for (let x = -32; x <= 40; x += 8) {
+    beam([x + 1.5, 8.6, BZ + 0.2], [x + 5, FY + 0.05, BZ + 11.5], 3.4);
+    beam([x + 1.8, 7.0, BZ + 0.2], [x + 5.3, FY + 0.05, BZ + 9.5], 1.8);
+  }
+  // sunlight pouring in through the open gate
+  const gateBeamMat = beamMat.clone();
+  gateBeamMat.opacity = 0.22;
+  for (const [z, w] of [[-4.5, 3.2], [-1.5, 3.2], [1.5, 3.2]]) {
+    const m = beam([EX, 6, z], [EX - 9, FY + 0.05, z + 1.2], w, true);
+    m.material = gateBeamMat;
+  }
+  const patch = new THREE.Mesh(new THREE.PlaneGeometry(10, 9.6), new THREE.MeshBasicMaterial({
+    map: canvasTex(128, 128, (x, W, H) => {
+      const gr = x.createLinearGradient(W, 0, 0, 0);
+      gr.addColorStop(0, 'rgba(255,226,170,0.9)');
+      gr.addColorStop(1, 'rgba(255,220,160,0)');
+      x.fillStyle = gr;
+      x.fillRect(0, 0, W, H);
+    }), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.45, toneMapped: false,
+  }));
+  patch.rotation.x = -Math.PI / 2;
+  patch.position.set(EX - 5, FY + 0.02, -1.5);
+  group.add(patch);
+
+  // dust in the air, drifting slowly
+  const N = 520;
+  const pos = new Float32Array(N * 3);
+  const seed = [];
+  const r = rng(61);
+  for (let i = 0; i < N; i++) seed.push([-24 + r() * 68, FY + r() * 11, BZ + 1 + r() * 17, r() * 6.28, 0.2 + r() * 0.5]);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const dustTex = canvasTex(32, 32, (x, W) => {
+    const gr = x.createRadialGradient(W / 2, W / 2, 0, W / 2, W / 2, W / 2);
+    gr.addColorStop(0, 'rgba(255,255,255,1)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = gr;
+    x.fillRect(0, 0, W, W);
+  });
+  const dust = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.07, map: dustTex, color: '#fff1d6', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  dust.frustumCulled = false;
+  group.add(dust);
+  function update(time) {
+    for (let i = 0; i < N; i++) {
+      const [x, y, z, ph, sp] = seed[i];
+      pos[i * 3] = x + Math.sin(time * 0.11 * sp + ph) * 0.8;
+      pos[i * 3 + 1] = FY + ((y - FY + time * 0.05 * sp) % 11);
+      pos[i * 3 + 2] = z + Math.cos(time * 0.09 * sp + ph * 1.3) * 0.6;
+    }
+    geo.attributes.position.needsUpdate = true;
+  }
+  return { update };
+}
+
 export function createLine({ chickLayers = 6 } = {}) {
   const g = new THREE.Group();
   const steel = new THREE.MeshStandardMaterial({ color: '#b9c1c9', roughness: 0.3, metalness: 0.85 });
@@ -510,7 +604,13 @@ export function createLine({ chickLayers = 6 } = {}) {
   };
 
   // the hangar around the line: floor, walls, steel frame, racks, lights, the gate the truck leaves through
-  buildHall(g);
+  const hall = buildHall(g);
+  // the studio reflections that light everything evenly are toned down in the hall: the light comes from
+  // the windows, the lamps and the gate, so the room gets depth and the beams can show
+  hall.traverse((o) => {
+    for (const m of [].concat(o.material || [])) if (m.envMapIntensity !== undefined && !m.userData.envSet) { m.envMapIntensity *= 0.35; m.userData.envSet = true; }
+  });
+  const atmo = buildAtmosphere(g);
 
   // belt A
   const AX0 = -16, AX1 = BELT_END;
@@ -648,6 +748,28 @@ export function createLine({ chickLayers = 6 } = {}) {
     boxes.push({ group: b, flaps });
   }
 
+  // stacks of closed, taped chick boxes on pallets behind the packing belt, ready for the next truck
+  {
+    const closed = new THREE.InstancedMesh(new THREE.BoxGeometry(BL, BH, BW), [cardEnd, cardEnd, cardFlap, liner, cardSide, cardSide], 14);
+    const pal = new THREE.InstancedMesh(new THREE.BoxGeometry(2.5, 0.16, 1.6), new THREE.MeshStandardMaterial({ map: palletTexture(), roughness: 0.92 }), 4);
+    const rs = rng(71);
+    const FLOOR = -2.6;
+    let n = 0;
+    [[10.6, 4], [13.4, 4], [16.2, 3], [19.0, 3]].forEach(([sx, h], i) => {
+      pal.setMatrixAt(i, new THREE.Matrix4().makeTranslation(sx, FLOOR + 0.08, -5.6));
+      for (let k = 0; k < h; k++) {
+        const m = new THREE.Matrix4().compose(
+          new THREE.Vector3(sx + (rs() - 0.5) * 0.08, FLOOR + 0.16 + BH / 2 + k * (BH + 0.005), -5.6 + (rs() - 0.5) * 0.08),
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (rs() - 0.5) * 0.05),
+          new THREE.Vector3(1, 1, 1));
+        closed.setMatrixAt(n++, m);
+      }
+    });
+    closed.count = n;
+    closed.castShadow = closed.receiveShadow = pal.receiveShadow = true;
+    g.add(closed, pal);
+  }
+
   // truck: a refrigerated delivery truck in brand colours (js/truck.js)
   const TX0 = 19.2, TX1 = 30.0, TY0 = -1.75, TY1 = 2.0, TZ = LINE_Z, TWID = 3.0;
   const { group: truck, door, wheels } = createTruck({ x0: TX0, x1: TX1, y0: TY0, y1: TY1, z: TZ, width: TWID });
@@ -700,6 +822,7 @@ export function createLine({ chickLayers = 6 } = {}) {
   const place = {};
   const boxPos = [];
   function update(q, time, dt, hero) {
+    atmo.update(time);
     // belt motion
     const moving = range(q, Q_START, Q_START + 0.01);
     beltTexA.offset.x = -Math.max(0, q - Q_START) * V / 1.2;

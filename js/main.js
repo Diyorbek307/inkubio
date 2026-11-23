@@ -150,6 +150,7 @@ composer.addPass(film);
 /* lights */
 const hemi = new THREE.HemisphereLight('#ffffff', '#2a2018', 0.3);
 const key = new THREE.DirectionalLight('#fff3e2', 2.4);
+const KEY_WARM_A = new THREE.Color('#fff3e2'), KEY_WARM_B = new THREE.Color('#ffd7a0');
 key.castShadow = Q.shadows;
 key.shadow.mapSize.set(Q.shadowSize, Q.shadowSize);
 key.shadow.bias = -0.0004;
@@ -647,11 +648,16 @@ const OPEN_A = 935, OPEN_B = 985;
 // after hatching the chick stands up in the bottom half of its shell (it stays upright), the rim at its belly
 const BASE = new THREE.Vector3(0, 0.72, 0);
 const MEET_SCALE = 1.2; // a little bigger than at hatching, so it rises well above the rim
+// then it jumps out of the shell and lands on the straw in front of it
+const LAND = new THREE.Vector3(1.9, 0, 0.7);
+const FLOOR_SCALE = 1.05;
+const JUMP_A = 1040, JUMP_B = 1064; // scroll range of the jump (inside the meeting chapter)
+let landedPeep = false;
 const riderPos = new THREE.Vector3();
 const riderQ = new THREE.Quaternion();
 const riderS = new THREE.Vector3();
 const riderM = new THREE.Matrix4(); // hatching: incubator leaves, warm room arrives
-const BG = [[0, '#0a0a0c'], [300, '#0a0a0c'], [340, '#070708'], [OPEN_A, '#070708'], [OPEN_B, '#1a120b'], [1250, '#1a120b'], [1340, '#cfd5db'], [1800, '#cfd5db']];
+const BG = [[0, '#0a0a0c'], [300, '#0a0a0c'], [340, '#070708'], [OPEN_A, '#070708'], [OPEN_B, '#1a120b'], [1250, '#1a120b'], [1340, '#aab3bb'], [1800, '#aab3bb']];
 const cam = new THREE.Vector3();
 const tgt = new THREE.Vector3();
 const tmpA = [];
@@ -670,6 +676,8 @@ function update(t, time, dt) {
   // phones: the text sits at the top, so aim higher and the chick lands lower in the frame
   const meetY = aspect < 0.75 ? 1.55 : 1.3;
   const meetK = aspect < 0.75 ? 1 : 1.45; // wider screens: step back so the chick in its shell fits under the header
+  // after the jump: the chick on the straw and the empty shell together
+  const PAIR_DX = 1.0, pairY = aspect < 0.75 ? 1.15 : 1.0, pairK = aspect < 0.75 ? 1.4 : 1.05;
   pointer.x += (pointer.nx - pointer.x) * (1 - Math.exp(-dt * 6));
   pointer.y += (pointer.ny - pointer.y) * (1 - Math.exp(-dt * 6));
 
@@ -704,20 +712,22 @@ function update(t, time, dt) {
   dustMat.opacity = (t < T.inc + 80 ? 0.55 * intro * (1 - sr(t, T.inc, T.inc + 80)) : 0.35 * warmIn) * (1 - sr(t, T.line, T.line + 40));
   scene.environment = t > T.line + 30 ? roomEnv : studioEnv;
   film.uniforms.time.value = time;
-  film.uniforms.vignette.value = kf(t, [[0, 0.6], [1250, 0.6], [1330, 0.22], [TOTAL, 0.22]]);
-  film.uniforms.grain.value = Q.grain ? kf(t, [[0, 0.04], [1250, 0.04], [1330, 0.025]]) : 0;
+  film.uniforms.vignette.value = kf(t, [[0, 0.6], [1250, 0.6], [1330, 0.42], [TOTAL, 0.42]]);
+  film.uniforms.grain.value = Q.grain ? kf(t, [[0, 0.04], [1250, 0.04], [1330, 0.035]]) : 0;
 
   // --- background / fog / lights
   colorAt(t, BG, bg);
   scene.fog.color.copy(bg);
   // inside the hangar a light haze softens the racks at the back, so the line and the titles stay readable
-  scene.fog.near = kf(t, [[T.line, 60], [T.line + 80, 20]]);
-  scene.fog.far = kf(t, [[T.line, 220], [T.line + 80, 85]]);
-  hemi.intensity = kf(t, [[0, 0.22], [300, 0.22], [360, 0.3], [440, 0.12], [OPEN_A, 0.12], [OPEN_B, 0.45], [1250, 0.45], [1330, 0.55]]);
-  key.intensity = kf(t, [[0, 2.1 * intro], [300, 2.1], [360, 1.3], [440, 0.45], [OPEN_A, 0.45], [OPEN_B, 2.4], [1250, 2.4], [1330, 2.8]]);
-  rim.intensity = kf(t, [[0, 1.8 * intro], [300, 1.8], [380, 0.4], [OPEN_A, 0.4], [OPEN_B, 1.8], [1250, 1.8], [1330, 0.5]]);
-  let bloomS = kf(t, [[0, 0.22], [300, 0.22], [380, 0.3], [OPEN_A, 0.3], [OPEN_B, 0.4], [1250, 0.4], [1330, 0.06]]);
-  renderer.toneMappingExposure = kf(t, [[0, 0.95], [300, 0.95], [380, 1.0], [1250, 1.0], [1330, 0.9]]);
+  scene.fog.near = kf(t, [[T.line, 60], [T.line + 80, 14]]);
+  scene.fog.far = kf(t, [[T.line, 220], [T.line + 80, 74]]);
+  hemi.intensity = kf(t, [[0, 0.22], [300, 0.22], [360, 0.3], [440, 0.12], [OPEN_A, 0.12], [OPEN_B, 0.45], [1250, 0.45], [1330, 0.3]]);
+  key.intensity = kf(t, [[0, 2.1 * intro], [300, 2.1], [360, 1.3], [440, 0.45], [OPEN_A, 0.45], [OPEN_B, 2.4], [1250, 2.4], [1330, 3.1]]);
+  // in the hall the main light is warm daylight from the gate and the windows
+  key.color.lerpColors(KEY_WARM_A, KEY_WARM_B, sr(t, T.line, T.line + 80));
+  rim.intensity = kf(t, [[0, 1.8 * intro], [300, 1.8], [380, 0.4], [OPEN_A, 0.4], [OPEN_B, 1.8], [1250, 1.8], [1330, 1.15]]); // cool skylight from behind
+  let bloomS = kf(t, [[0, 0.22], [300, 0.22], [380, 0.3], [OPEN_A, 0.3], [OPEN_B, 0.4], [1250, 0.4], [1330, 0.17]]);
+  renderer.toneMappingExposure = kf(t, [[0, 0.95], [300, 0.95], [380, 1.0], [1250, 1.0], [1330, 0.86]]);
 
   // overlays
   for (const s of shows) {
@@ -952,8 +962,8 @@ function update(t, time, dt) {
     eggState.pipHide = true;
     eggState.bottomFade = sr(t, T.line + 8, T.line + 24); // the shell melts away as the line arrives
     // the down dries and fluffs up in the first moments
-    const dry = sr(t, T.alive - 10, T.alive + 70);
-    const growUp = sr(t, T.alive - 10, T.alive + 80);
+    const dry = sr(t, T.alive - 10, T.alive + 36); // dry and fluffy before it jumps
+    const growUp = sr(t, T.alive - 10, T.alive + 35);
 
     if (t < T.line) {
       const inMeet = true;
@@ -964,19 +974,38 @@ function update(t, time, dt) {
       if (rt < lastRoutineT - 1) { /* loop */ }
       if (lastRoutineT < 14.55 && rt >= 14.55) sayPeep();
       lastRoutineT = rt;
-      const wake = sr(t, T.alive + 40, T.alive + 90); // routine starts once it is dry
+      // jump out of the shell: crouch → take-off → flight with flapping wings → landing squash
+      const J = range(t, JUMP_A, JUMP_B);
+      const fly = range(J, 0.22, 0.8);
+      const out = easeInOut(fly);
+      const wake = sr(t, JUMP_B, JUMP_B + 30); // its little routine starts on the straw
       for (const k of Object.keys(createPose())) heroP[k] = (rPose[k] || 0) * w5 * wake;
-      heroP.shake = bump(t, T.alive + 25, 12);
-      heroP.walk = 0; // it stays in its shell: no walking, only small bounces
-      heroP.hop *= 0.35;
-      hero.root.position.copy(BASE);
-      hero.root.rotation.y = lerp(-0.45, (rPose.bodyYaw % (Math.PI * 2)) * w5, wake);
-      hero.root.scale.setScalar(lerp(0.84, MEET_SCALE, growUp));
+      heroP.shake = bump(t, T.alive + 22, 10);
+      heroP.squash += bump(J, 0.12, 0.1) * 0.55 + bump(J, 0.86, 0.08) * 0.5;
+      heroP.sit += bump(J, 0.12, 0.1) * 0.35;
+      heroP.wing = Math.max(heroP.wing, Math.sin(Math.PI * fly));
+      heroP.flap = Math.max(heroP.flap, Math.sin(Math.PI * fly));
+      heroP.lean += Math.sin(Math.PI * fly) * 0.25;
+      heroP.headPitch -= Math.sin(Math.PI * fly) * 0.2;
+      if (J < 0.98) heroP.walk = 0; // no walking while still in the shell or in the air
+      hero.root.position.set(
+        lerp(BASE.x, LAND.x, out),
+        lerp(BASE.y, LAND.y, out) + Math.sin(Math.PI * fly) * 1.15,
+        lerp(BASE.z, LAND.z, out) + rPose.z * w5 * wake
+      );
+      hero.root.rotation.y = lerp(-0.45, (rPose.bodyYaw % (Math.PI * 2)) * w5, wake) - Math.sin(Math.PI * fly) * 0.3;
+      hero.root.scale.setScalar(lerp(lerp(0.84, MEET_SCALE, growUp), FLOOR_SCALE, out));
+      if (J > 0.86 && !landedPeep) { landedPeep = true; sayPeep(); buzz(12); }
+      if (J < 0.5) landedPeep = false;
       hero.setLook({ wet: 1 - dry });
       heroLookEmbryo = true;
       lookInfluence = (now - pointer.last < 2.5 && pointer.has ? 1 : 0) * w5 * wake;
-      cam.set(camX, meetY + 0.45, 5.4 * meetK * far);
-      tgt.set(camX, meetY, 0.15);
+      // camera: from the chick in its shell to both of them — the chick on the straw and the empty shell
+      const pair = sr(J, 0.15, 0.9);
+      const cx = camX + pair * PAIR_DX;
+      const cy = lerp(meetY, pairY, pair);
+      cam.set(cx, cy + 0.45, 5.4 * meetK * far * (1 + pair * (pairK - 1)));
+      tgt.set(cx, cy, 0.15);
     } else {
       wasInMeet = false;
       lastRoutineT = 0;
@@ -987,10 +1016,9 @@ function update(t, time, dt) {
       const st = line.update(q, time, dt, hero);
       if (q < qs) {
         const f = easeInOut(range(q, 0.062, qs - 0.004));
-        // while its shell melts away the chick settles onto the floor, then hops onto the belt
-        const settle = BASE.y * (1 - sr(t, T.line + 10, T.line + 26));
-        hero.root.position.set(lerp(BASE.x, 0, f), lerp(settle, 0, f) + Math.sin(Math.PI * f) * 0.85, lerp(BASE.z, LINE_Z, f));
-        hero.root.scale.setScalar(lerp(MEET_SCALE, 1, f));
+        // from its spot on the straw it hops onto the belt
+        hero.root.position.set(lerp(LAND.x, 0, f), Math.sin(Math.PI * f) * 0.85, lerp(LAND.z, LINE_Z, f));
+        hero.root.scale.setScalar(lerp(FLOOR_SCALE, 1, f));
         heroP.wing = Math.sin(Math.PI * f) * 0.9;
         heroP.flap = Math.sin(Math.PI * f);
         heroP.squash = bump(f, 0.02, 0.05) * 0.5 + bump(f, 0.98, 0.05) * 0.4;
@@ -1000,9 +1028,9 @@ function update(t, time, dt) {
       heroP.blink = bump(time % 3.3, 0.2, 0.12);
 
       // camera follows the action
-      const tx = kf(q, [[0, camX], [0.1, 1.6], [0.3, 5], [0.48, 8.6], [0.66, 10.5], [0.8, 17], [0.88, 22], [1, 33]]);
-      tgt.set(tx, kf(q, [[0, 0.7], [0.12, 0.1], [0.5, -0.3], [1, 0]]), kf(q, [[0, 0.15], [0.12, LINE_Z]]));
-      kfv(q, [[0, [0, 0.65, 5.25]], [0.12, [3.5, 5.2, 14.5]], [0.5, [3, 4.6, 14.5]], [0.72, [2, 4.6, 17]], [0.88, [0, 5, 20]], [1, [-3, 5.2, 22]]], tmpA);
+      const tx = kf(q, [[0, camX + PAIR_DX], [0.1, 1.6], [0.3, 5], [0.48, 8.6], [0.66, 10.5], [0.8, 17], [0.88, 22], [1, 33]]);
+      tgt.set(tx, kf(q, [[0, pairY], [0.12, 0.1], [0.5, -0.3], [1, 0]]), kf(q, [[0, 0.15], [0.12, LINE_Z]]));
+      kfv(q, [[0, [0, 0.45, 5.4 * meetK * pairK]], [0.12, [3.5, 5.2, 14.5]], [0.5, [3, 4.6, 14.5]], [0.72, [2, 4.6, 17]], [0.88, [0, 5, 20]], [1, [-3, 5.2, 22]]], tmpA);
       cam.set(tgt.x + tmpA[0] * far, tgt.y + tmpA[1], tgt.z + tmpA[2] * far);
 
       // HUD
