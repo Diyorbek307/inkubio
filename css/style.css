@@ -942,3 +942,41 @@ dialog .alt a, dialog .consent a { color: var(--accent); }
 .foot .uz-flag { width: 28px; height: 14px; }
 /* phones: the call bar sits at the bottom of the screen — keep the footer (and its flag) above it */
 @media (max-width: 760px) { .foot { padding-bottom: 120px; } }
+
+/* partners on the first screen: two matching glass pills, left and right under the header */
+.partners {
+  top: calc(env(safe-area-inset-top, 0px) + clamp(92px, 13vh, 128px)); left: var(--gutter); right: var(--gutter);
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; pointer-events: none;
+}
+.partner {
+  display: flex; align-items: center; gap: 11px; max-width: min(320px, calc(50% - 6px));
+  padding: 6px 16px 6px 6px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(28, 26, 22, 0.62), rgba(12, 12, 14, 0.5));
+  border: 1px solid rgba(246, 242, 234, 0.14);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.partner.r { flex-direction: row-reverse; text-align: right; padding: 6px 6px 6px 16px; }
+.partner img { width: 44px; height: 44px; flex: none; border-radius: 50%; box-shadow: 0 0 0 1.5px rgba(255, 240, 210, 0.28), 0 4px 14px rgba(0, 0, 0, 0.45); }
+.partner span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.partner small { font: 600 10px/1.2 var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.partner b { font: 700 13.5px/1.2 var(--body); color: var(--ink); }
+.partner.r b { font-family: var(--display); font-weight: 700; font-size: 12.5px; letter-spacing: 0.04em; text-transform: uppercase; }
+@media (max-width: 560px) {
+  .partners { gap: 8px; }
+  .partner { gap: 8px; padding: 5px 11px 5px 5px; max-width: calc(50% - 4px); }
+  .partner.r { padding: 5px 5px 5px 11px; }
+  .partner img { width: 36px; height: 36px; }
+  .partner small { font-size: 8.5px; letter-spacing: 0.05em; }
+  .partner b { font-size: 11px; }
+  .partner.r b { font-family: var(--body); font-weight: 800; font-size: 11px; letter-spacing: 0.03em; } /* narrower than Unbounded */
+  .partner span { overflow-wrap: anywhere; }
+}
+@media (max-width: 360px) {
+  .partner small { display: none; }
+  .partner { gap: 7px; padding: 4px 9px 4px 4px; }
+  .partner.r { padding: 4px 4px 4px 9px; }
+  .partner img { width: 32px; height: 32px; }
+  .partner b { font-size: 10px; }
+  .partner.r b { font-size: 9px; letter-spacing: 0; overflow-wrap: normal; white-space: nowrap; }
+}

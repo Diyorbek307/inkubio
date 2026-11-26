@@ -72,6 +72,10 @@
     'В ПУТЬ': ['YO‘LGA', 'ON THE WAY'],
 
     /* ---------- the story ---------- */
+    'Партнёры': ['Hamkorlar', 'Partners'],
+    'Республика Узбекистан': ['O‘zbekiston Respublikasi', 'Republic of Uzbekistan'],
+    'Министерство сельского хозяйства': ['Qishloq xo‘jaligi vazirligi', 'Ministry of Agriculture'],
+    'Ассоциация птицеводов Узбекистана': ['O‘zbekiston parrandachilar uyushmasi', 'Poultry Association of Uzbekistan'],
     'Из Узбекистана': ['O‘zbekistondan', 'From Uzbekistan'],
     'Сделано в Узбекистане': ['O‘zbekistonda ishlab chiqarilgan', 'Made in Uzbekistan'],
     'Инкубаторий INKUBIO': ['INKUBIO inkubatoriyasi', 'INKUBIO hatchery'],
