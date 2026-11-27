@@ -6,6 +6,13 @@ set -euo pipefail
 DOMAIN="${1:?usage: setup.sh <domain>}"
 export DEBIAN_FRONTEND=noninteractive
 
+echo "== swap (small servers with 512 MB–1 GB of memory)"
+if [ ! -f /swapfile ] && [ "$(awk '/MemTotal/ {print $2}' /proc/meminfo)" -lt 2000000 ]; then
+  fallocate -l 1G /swapfile && chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+free -m | head -n 3
+
 echo "== packages"
 apt-get update -y -q
 apt-get install -y -q curl ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https ufw >/dev/null
