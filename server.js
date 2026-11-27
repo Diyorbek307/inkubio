@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import nodemailer from 'nodemailer';
 import { gzipSync } from 'node:zlib';
 import { createAdmin } from './server/admin.js';
+import { createTelegram } from './server/telegram.js';
+import { mkdirSync } from 'node:fs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5173;
@@ -38,8 +40,11 @@ const transport = mailReady
   : null;
 
 /* ---------------- telegram (optional) ---------------- */
+// the owner's chat (TELEGRAM_CHAT_ID) plus employees who joined with the invite link (server/telegram.js)
 const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = process.env;
-const tgReady = Boolean(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID);
+try { mkdirSync(DATA_DIR, { recursive: true }); } catch { /* reported by the admin module */ }
+const tg = createTelegram({ token: TELEGRAM_BOT_TOKEN || '', chatId: TELEGRAM_CHAT_ID || '', dataDir: DATA_DIR });
+const tgReady = () => tg.ready();
 async function sendTelegram(o) {
   const text = [
     '🐣 Новая заявка с сайта',
@@ -53,13 +58,7 @@ async function sendTelegram(o) {
     ...(o.city ? [`Город доставки: ${o.city}`] : []),
     ...(o.lang && o.lang !== 'русский' ? [`Язык клиента: ${o.lang}`] : []),
   ].join('\n');
-  const r = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!r.ok) throw new Error(`Telegram ${r.status}`);
+  await tg.send(text);
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -214,7 +213,7 @@ async function handleOrder(req, res) {
   if (errors.length) return json(res, 422, { ok: false, error: 'invalid', fields: errors });
   o.receivedAt = new Date();
 
-  if (!mailReady && !tgReady) {
+  if (!mailReady && !tgReady()) {
     await saveOrder(o, 'почта не настроена');
     admin.recordOrder();
     console.warn(`[order] сохранена в ${path.basename(ORDERS_FILE)}, но почта не настроена: ${o.name}, ${o.phone}`);
@@ -223,7 +222,7 @@ async function handleOrder(req, res) {
   // send to every configured channel; the order counts as delivered if at least one worked
   const channels = [];
   if (mailReady) channels.push(['почта', () => transport.sendMail(orderMail(o))]);
-  if (tgReady) channels.push(['Telegram', () => sendTelegram(o)]);
+  if (tgReady()) channels.push(['Telegram', () => sendTelegram(o)]);
   const results = await Promise.allSettled(channels.map(([, fn]) => fn()));
   const ok = channels.filter((_, i) => results[i].status === 'fulfilled').map(([n]) => n);
   results.forEach((r, i) => r.status === 'rejected' && console.error(`[order] ${channels[i][0]}: не удалось отправить —`, r.reason?.message));
@@ -265,7 +264,7 @@ function parseCsv(text) {
 }
 const admin = createAdmin({
   dataDir: DATA_DIR, password: process.env.ADMIN_PASSWORD || '', breeds: BREEDS, ordersFile: ORDERS_FILE,
-  parseCsv, clientIp, makeLimiter, json, send,
+  parseCsv, clientIp, makeLimiter, json, send, telegram: tg,
 });
 
 /* ---------------- search engines ---------------- */
@@ -338,9 +337,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, async () => {
   console.log(`INKUBIO: http://localhost:${PORT}`);
-  if (tgReady) console.log('✓ Telegram: заявки дублируются в чат');
+  if (TELEGRAM_BOT_TOKEN) console.log(`✓ Telegram: заявки уходят в Telegram (${tg.info().subscribers.length} подписанных сотрудников${TELEGRAM_CHAT_ID ? ' + владелец' : ''})`);
   if (!mailReady) {
-    if (!tgReady) console.warn('⚠ Почта не настроена: заявки сохраняются только в orders.csv. Заполните .env (см. .env.example).');
+    if (!TELEGRAM_BOT_TOKEN) console.warn('⚠ Почта не настроена: заявки сохраняются только в orders.csv. Заполните .env (см. .env.example).');
     return;
   }
   try {

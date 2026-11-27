@@ -264,6 +264,7 @@ async function viewOrders(main) {
   main.replaceChildren(
     h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Заявки'), h('div', { class: 'muted' }, `Всего ${data.rows.length} · новых ${counts.new} · в работе ${counts.work} · выполнено ${counts.done}`)),
       h('a', { class: 'btn primary', href: '/admin/orders.csv' }, 'Скачать для Excel')),
+    tgCard(),
     h('div', { class: 'filters' }, q, f),
     h('div', { class: 'tablewrap' }, h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'Статус'), data.head.map((c) => h('th', {}, c)))), body)));
   function draw() {
@@ -278,6 +279,33 @@ async function viewOrders(main) {
     }) : [h('tr', {}, h('td', { colSpan: data.head.length + 1, class: 'empty' }, data.rows.length ? 'Ничего не найдено' : 'Заявок пока нет'))]));
   }
   draw();
+}
+
+/* ---------- Telegram: who gets the orders ---------- */
+function tgCard() {
+  const box = h('div', { class: 'card', style: { marginBottom: '14px' } }, h('div', { class: 'muted' }, 'Загрузка…'));
+  const draw = (t) => {
+    if (!t.enabled) {
+      box.replaceChildren(h('h3', {}, 'Заявки в Telegram'), h('div', { class: 'muted' }, 'Бот не подключён: на сервере нет TELEGRAM_BOT_TOKEN.'));
+      return;
+    }
+    const act = async (body) => { try { draw(await api('/api/admin/telegram', { method: 'POST', body: JSON.stringify(body) })); } catch { toast('Не удалось'); } };
+    box.replaceChildren(
+      h('div', { class: 'head', style: { marginBottom: '8px' } }, h('h3', { style: { margin: 0 } }, 'Заявки в Telegram'),
+        h('span', { class: 'muted' }, `получают: ${t.subscribers.length + (t.owner ? 1 : 0)}`)),
+      h('p', { class: 'muted', style: { margin: '0 0 10px' } }, 'Отправьте эту ссылку сотруднику: он нажмёт «Start» и начнёт получать новые заявки. Без ссылки бот заявки не присылает.'),
+      t.link ? h('div', { class: 'filters' },
+        h('input', { value: t.link, readOnly: true, onclick: (e) => e.target.select() }),
+        h('button', { class: 'btn primary', onclick: async () => { try { await navigator.clipboard.writeText(t.link); toast('Ссылка скопирована'); } catch { toast('Выделите и скопируйте ссылку'); } } }, 'Копировать'),
+        h('button', { class: 'btn', onclick: () => { if (confirm('Старая ссылка перестанет работать (уже подписанные останутся). Сменить?')) act({ action: 'newLink' }); } }, 'Сменить ссылку'))
+        : h('div', { class: 'muted' }, 'Бот подключается… обновите страницу через минуту.'),
+      t.owner ? h('div', { class: 'muted', style: { margin: '6px 0' } }, '• Владелец (чат из настроек сервера) — всегда получает') : null,
+      ...t.subscribers.map((s) => h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', margin: '6px 0' } },
+        h('span', {}, '• ', s.name || s.id), h('span', { class: 'muted' }, s.since ? `с ${s.since.slice(0, 10).split('-').reverse().join('.')}` : ''),
+        h('button', { class: 'btn small danger', onclick: () => { if (confirm(`Отключить ${s.name || s.id} от заявок?`)) act({ action: 'remove', id: s.id }); } }, 'Отключить'))));
+  };
+  api('/api/admin/telegram').then(draw).catch(() => box.replaceChildren(h('div', { class: 'muted' }, 'Не удалось загрузить настройки Telegram')));
+  return box;
 }
 
 /* ---------- uploads ---------- */

@@ -104,7 +104,7 @@ function imageType(b) {
   return null;
 }
 
-export function createAdmin({ dataDir, password, breeds, ordersFile, parseCsv, clientIp, makeLimiter, json, send }) {
+export function createAdmin({ dataDir, password, breeds, ordersFile, parseCsv, clientIp, makeLimiter, json, send, telegram }) {
   const enabled = Boolean(password);
   const UPLOADS = path.join(dataDir, 'uploads');
   // folders and the signing secret (kept on the server; changing ADMIN_PASSWORD also logs everyone out)
@@ -306,6 +306,15 @@ export function createAdmin({ dataDir, password, breeds, ordersFile, parseCsv, c
           await news.set(news.get().filter((x) => x.id !== id));
           return json(res, 200, { ok: true }), true;
         }
+      }
+      if (pathname === '/api/admin/telegram') {
+        if (!telegram) return json(res, 200, { enabled: false, subscribers: [] }), true;
+        if (method === 'POST') {
+          const b = await jsonBody(req, 1000);
+          if (b.action === 'remove') await telegram.remove(String(b.id || ''));
+          else if (b.action === 'newLink') await telegram.newLink();
+        }
+        return json(res, 200, telegram.info()), true;
       }
       if (pathname === '/api/admin/upload' && method === 'POST') {
         const b = await body(req, 8 * 1024 * 1024);
