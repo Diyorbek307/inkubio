@@ -74,6 +74,7 @@
     /* ---------- the story ---------- */
     'Партнёры': ['Hamkorlar', 'Partners'],
     'Новости': ['Yangiliklar', 'News'],
+    'Нажмите — включите звук': ['Bosing — ovozni yoqing', 'Tap to turn on the sound'],
     'Новости инкубатория': ['Inkubatoriya yangiliklari', 'Hatchery news'],
     'Читать полностью': ['To‘liq o‘qish', 'Read more'],
     'Свернуть': ['Yig‘ish', 'Show less'],
@@ -638,7 +639,7 @@
       var out = t(m[2]);
       if (out !== m[2]) n.nodeValue = m[1] + out + m[3];
     });
-    ['aria-label', 'placeholder', 'title', 'alt', 'content', 'data-label'].forEach(function (a) {
+    ['aria-label', 'placeholder', 'title', 'alt', 'content', 'data-label', 'data-hint'].forEach(function (a) {
       root.querySelectorAll('[' + a + ']').forEach(function (el) {
         var v = el.getAttribute(a);
         if (/[А-Яа-яЁё]/.test(v)) el.setAttribute(a, t(v));

@@ -107,7 +107,7 @@ export function startMusic() {
   if (!ready() || music) return;
   const out = ctx.createGain();
   out.gain.value = 0;
-  out.gain.setTargetAtTime(0.9, ctx.currentTime, 1.2);
+  out.gain.setTargetAtTime(0.75, ctx.currentTime, 1.2);
   // a little space: feedback delay
   const delay = ctx.createDelay(1);
   delay.delayTime.value = 0.42;
@@ -213,11 +213,109 @@ export function setAmbient(incubator = 0, hall = 0) {
   }
   if (Math.abs(incubator - amb.inc) > 0.01) {
     amb.inc = incubator;
-    amb.humGain.gain.setTargetAtTime(incubator * 0.05, ctx.currentTime, 0.3);
+    amb.humGain.gain.setTargetAtTime(incubator * 0.08, ctx.currentTime, 0.3);
     amb.motorGain.gain.setTargetAtTime(incubator * 0.006, ctx.currentTime, 0.3);
   }
   if (Math.abs(hall - amb.hall) > 0.01) {
     amb.hall = hall;
-    amb.hallGain.gain.setTargetAtTime(hall * 0.05, ctx.currentTime, 0.4);
+    amb.hallGain.gain.setTargetAtTime(hall * 0.08, ctx.currentTime, 0.4);
   }
+}
+
+/* ---------- story effects ---------- */
+
+/** a soft whoosh between chapters */
+export function whoosh(volume = 0.06) {
+  if (!ready()) return;
+  const t = ctx.currentTime + 0.01;
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer(1.1);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 0.9;
+  bp.frequency.setValueAtTime(300, t);
+  bp.frequency.exponentialRampToValueAtTime(2400, t + 0.45);
+  bp.frequency.exponentialRampToValueAtTime(500, t + 1.0);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(volume, t + 0.35);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05);
+  src.connect(bp).connect(g).connect(master);
+  src.start(t);
+  src.stop(t + 1.1);
+}
+
+/** the embryo's heartbeat: lub-dub */
+export function heartbeat(volume = 0.25) {
+  if (!ready()) return;
+  const t0 = ctx.currentTime + 0.01;
+  [[0, 1], [0.17, 0.7]].forEach(([dt, k]) => {
+    const t = t0 + dt;
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(78, t);
+    o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(volume * k, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.connect(g).connect(master);
+    o.start(t);
+    o.stop(t + 0.18);
+  });
+}
+
+/** the incubator display: a short double beep when the day changes */
+export function beep(volume = 0.03) {
+  if (!ready()) return;
+  const t0 = ctx.currentTime + 0.01;
+  for (let k = 0; k < 2; k++) {
+    const t = t0 + k * 0.09;
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = 1900;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(volume, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    o.connect(g).connect(master);
+    o.start(t);
+    o.stop(t + 0.07);
+  }
+}
+
+/** the truck's diesel engine: idle (0..1) and driving away (0..1) */
+let engine = null;
+export function setEngine(idle = 0, drive = 0) {
+  if (!ready()) return;
+  if (!engine) {
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = 38;
+    const o2 = ctx.createOscillator();
+    o2.type = 'square';
+    o2.frequency.value = 19;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 220;
+    const g = ctx.createGain();
+    g.gain.value = 0;
+    const g2 = ctx.createGain();
+    g2.gain.value = 0.35;
+    o.connect(lp);
+    o2.connect(g2).connect(lp);
+    lp.connect(g).connect(master);
+    o.start();
+    o2.start();
+    engine = { o, o2, lp, g, level: -1 };
+  }
+  const level = Math.max(idle, drive);
+  const key = Math.round(level * 50) + Math.round(drive * 50) * 100;
+  if (key === engine.level) return;
+  engine.level = key;
+  const now = ctx.currentTime;
+  engine.g.gain.setTargetAtTime(level * 0.07, now, 0.25);
+  engine.o.frequency.setTargetAtTime(38 + drive * 34, now, 0.4);
+  engine.o2.frequency.setTargetAtTime(19 + drive * 17, now, 0.4);
+  engine.lp.frequency.setTargetAtTime(220 + drive * 420, now, 0.4);
 }

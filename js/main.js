@@ -13,7 +13,7 @@ import { createEmbryo } from './embryo.js';
 import { createChick, createPose } from './chick.js';
 import { createIncubator } from './incubator.js';
 import { createLine, LINE_Z } from './line.js';
-import { unlockAudio, chirp, crackSound, setSound, soundOn, setAmbient, startMusic, stopMusic } from './sound.js';
+import { unlockAudio, chirp, crackSound, setSound, soundOn, setAmbient, startMusic, whoosh, heartbeat, beep, setEngine } from './sound.js';
 import { SITE } from './config.js';
 
 // canvas textures (brand plate, truck, screen) need the brand fonts to be ready
@@ -43,6 +43,8 @@ const say = (s, v) => (window.I18N ? window.I18N.t(s, v) : String(s).replace(/\{
 const LOCALE = window.I18N?.locale || 'ru-RU';
 // texts from the admin panel go into HTML templates escaped
 const escHtml = (x) => String(x ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+// sound effects of the story: heartbeat timing, the day shown on the incubator, peeps on the straw
+let lastBeat = 0, lastDayShown = 0, lastAmbientPeep = 0;
 const stat = (t, v) => { try { window.inkTrack?.(t, v); } catch { /* statistics are optional */ } };
 const LANG = window.I18N?.lang || 'ru';
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -506,9 +508,16 @@ function heroHit(clientX, clientY) {
   return raycaster.intersectObjects(hero.meshes, false).length > 0;
 }
 
+// browsers allow sound only after a click, tap or key; the first one starts the music of the story
+function startSound() {
+  const a = unlockAudio();
+  (a || Promise.resolve()).then(() => { if (soundOn()) startMusic(); });
+}
+addEventListener('click', startSound);
+addEventListener('touchend', startSound, { passive: true });
 addEventListener('pointerdown', (e) => {
   touched = true;
-  unlockAudio();
+  startSound();
   pointer.nx = (e.clientX / innerWidth) * 2 - 1;
   pointer.ny = -((e.clientY / innerHeight) * 2 - 1);
   pointer.last = now;
@@ -520,7 +529,7 @@ addEventListener('pointerdown', (e) => {
     sayPeep();
   }
 }, { passive: true });
-addEventListener('keydown', unlockAudio);
+addEventListener('keydown', startSound);
 
 canvas.addEventListener('pointermove', (e) => {
   canvas.style.cursor = heroHit(e.clientX, e.clientY) ? 'pointer' : '';
@@ -547,7 +556,7 @@ soundBtn.addEventListener('click', () => {
   setSound(!soundOn());
   syncSoundBtn();
   try { localStorage.setItem('inkubio-mute', soundOn() ? '0' : '1'); } catch { /* storage off */ }
-  if (soundOn()) chirp(0.08);
+  if (soundOn()) { chirp(0.08); startSound(); }
 });
 // sound is on by default (a visitor who muted it once stays muted); browsers only let it play after
 // the first click, tap or key, so the button pulses gently until then
@@ -774,6 +783,9 @@ function update(t, time, dt) {
   incubator.group.visible = build > 0.001;
   // quiet background sound: the incubator hums while we are inside it, the hall rumbles on the line
   setAmbient(build * (1 - sr(t, T.inc + 260, T.inc + 330) * 0.4), sr(t, T.line, T.line + 60) * (1 - sr(t, TOTAL - 30, TOTAL + 80)));
+  // the embryo's heartbeat while we watch it grow — a little faster day by day
+  if (t > T.inc + 150 && t < T.hatch - 15 && time - lastBeat > lerp(1.05, 0.6, range(t, T.inc + 150, T.hatch))) { lastBeat = time; heartbeat(0.22); }
+  if (t < T.line) setEngine(0, 0);
   egg.pivot.visible = t < T.line + 60;
   disc.visible = t >= OPEN_A && t < T.line + 60;
   discMat.opacity = warmIn * (1 - sr(t, T.line, T.line + 45));
@@ -940,6 +952,7 @@ function update(t, time, dt) {
 
     // day HUD
     const dd = Math.max(1, Math.round(day));
+    if (dd !== lastDayShown) { if (lastDayShown) beep(); lastDayShown = dd; }
     hud.day.textContent = dd;
     const st = [...STAGES].reverse().find((s) => dd >= s[0]);
     if (hud.dayStage.textContent !== say(st[1])) {
@@ -1088,6 +1101,7 @@ function update(t, time, dt) {
       hero.root.scale.setScalar(lerp(lerp(0.84, MEET_SCALE, growUp), FLOOR_SCALE, out));
       if (J > 0.86 && !landedPeep) { landedPeep = true; sayPeep(); buzz(12); }
       if (J < 0.5) landedPeep = false;
+      if (wake > 0.5 && time - lastAmbientPeep > 6) { lastAmbientPeep = time + Math.random() * 4; chirp(0.045); }
       hero.setLook({ wet: 1 - dry });
       heroLookEmbryo = true;
       lookInfluence = (now - pointer.last < 2.5 && pointer.has ? 1 : 0) * w5 * wake;
@@ -1105,6 +1119,7 @@ function update(t, time, dt) {
       // hero hops onto the belt, then the line moves it
       line.group.position.y = -7 * (1 - easeOut(range(q, 0.015, 0.07)));
       const st = line.update(q, time, dt, hero);
+      setEngine(sr(q, 0.74, 0.8) * (1 - range(q, 0.975, 1)), range(q, 0.885, 1) * (1 - range(q, 0.985, 1)));
       if (q < qs) {
         const f = easeInOut(range(q, 0.062, qs - 0.004));
         // from its spot on the straw it hops onto the belt
@@ -1236,6 +1251,7 @@ function update(t, time, dt) {
   CHAPTERS.forEach((c, i) => (t >= c.at - 5 ? (active = i) : 0));
   railDots.forEach((d, i) => d.classList.toggle('active', i === active));
   if (active !== lastChapter) {
+    if (lastChapter >= 0) whoosh(0.05);
     lastChapter = active;
     counterEl.querySelector('b').textContent = String(active + 1).padStart(2, '0');
     counterEl.querySelector('em').textContent = say(CHAPTERS[active].name);
@@ -1782,7 +1798,6 @@ function stopFilm() {
   filmOn = false;
   document.body.classList.remove('filming');
   filmBar.classList.remove('show');
-  stopMusic();
 }
 $$('[data-film]').forEach((b) => b.addEventListener('click', startFilm));
 // ?promo=1: clean frame for recording a vertical video — no controls, the film is started from outside
