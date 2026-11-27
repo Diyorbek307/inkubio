@@ -568,6 +568,7 @@ body.no3d .reveal > * { opacity: 1; transform: none; }
 .dmap-zones li.hub i { border: 0; background: var(--accent); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; box-shadow: 0 0 10px rgba(255, 201, 58, 0.6); }
 dialog .order-city { margin: 0; display: flex; align-items: center; gap: 6px; padding: 10px 12px 10px 14px; border-radius: 12px; background: rgba(255, 201, 58, 0.08); border: 1px solid rgba(255, 201, 58, 0.25); font-size: 14px; }
 dialog .order-city b { flex: 1; }
+dialog .order-city[hidden] { display: none; } /* only when a town was picked on the delivery map */
 dialog .order-city button { width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(246, 242, 234, 0.08); color: #f6f2ea; font-size: 16px; cursor: pointer; }
 
 /* payback calculator */
