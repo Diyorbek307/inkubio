@@ -14,3 +14,8 @@ __DOMAIN__ {
 		}
 	}
 }
+
+# www.<domain> → <domain> (its own certificate, then a permanent redirect)
+www.__DOMAIN__ {
+	redir https://__DOMAIN__{uri} permanent
+}

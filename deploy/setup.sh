@@ -33,7 +33,7 @@ chown -R inkubio:inkubio /var/lib/inkubio
 
 echo "== service"
 install -m 644 /tmp/inkubio/inkubio.service /etc/systemd/system/inkubio.service
-sed "s/__DOMAIN__/${DOMAIN}/" /tmp/inkubio/Caddyfile > /etc/caddy/Caddyfile
+sed "s/__DOMAIN__/${DOMAIN}/g" /tmp/inkubio/Caddyfile > /etc/caddy/Caddyfile
 systemctl daemon-reload
 systemctl enable inkubio caddy >/dev/null 2>&1
 
