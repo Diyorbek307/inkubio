@@ -462,6 +462,13 @@
         </div>
       </section>
 
+      <!-- news: added in the admin panel (/admin), logic in js/news.js; hidden while there is nothing published -->
+      <section class="block news reveal" id="news" hidden aria-labelledby="newsTitle">
+        <p class="kicker">Новости</p>
+        <h3 id="newsTitle" class="section-title">Новости инкубатория</h3>
+        <div class="news-grid" id="newsGrid"></div>
+      </section>
+
       <div class="about-grid">
         <div class="card">
           <h3>Производство</h3>
@@ -683,7 +690,9 @@
   </dialog>
 
   <script src="js/i18n.js"></script>
+  <script src="js/track.js"></script>
   <script type="module" src="js/proof.js"></script>
+  <script type="module" src="js/news.js"></script>
   <script type="module" src="js/calc.js"></script>
   <script type="module" src="js/dmap.js"></script>
   <script type="module" src="js/contact.js"></script>

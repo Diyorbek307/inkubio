@@ -19,3 +19,5 @@ services:
         sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
+      - key: ADMIN_PASSWORD # панель /admin; на бесплатном Render её данные стираются при обновлении сайта
+        sync: false

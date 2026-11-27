@@ -7,11 +7,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import nodemailer from 'nodemailer';
 import { gzipSync } from 'node:zlib';
-import { timingSafeEqual } from 'node:crypto';
+import { createAdmin } from './server/admin.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 5173;
 const ORDERS_FILE = process.env.ORDERS_FILE || path.join(ROOT, 'orders.csv');
+// admin data (site texts, news, statistics, uploaded photos): next to orders.csv on the server, ./data locally
+const DATA_DIR = process.env.DATA_DIR || (process.env.ORDERS_FILE ? path.dirname(ORDERS_FILE) : path.join(ROOT, 'data'));
 // '1' — behind nginx/Caddy; 'cloudflare' — published through a Cloudflare tunnel from this computer
 const TRUST_CF = process.env.TRUST_PROXY === 'cloudflare';
 const TRUST_RENDER = process.env.TRUST_PROXY === 'render'; // Render.com: traffic always comes through Cloudflare
@@ -214,6 +216,7 @@ async function handleOrder(req, res) {
 
   if (!mailReady && !tgReady) {
     await saveOrder(o, 'почта не настроена');
+    admin.recordOrder();
     console.warn(`[order] сохранена в ${path.basename(ORDERS_FILE)}, но почта не настроена: ${o.name}, ${o.phone}`);
     return json(res, 200, { ok: true, mailed: false });
   }
@@ -226,19 +229,12 @@ async function handleOrder(req, res) {
   results.forEach((r, i) => r.status === 'rejected' && console.error(`[order] ${channels[i][0]}: не удалось отправить —`, r.reason?.message));
   await saveOrder(o, ok.length ? `отправлено (${ok.join(', ')})` : 'ошибка отправки').catch(() => {});
   if (!ok.length) return json(res, 502, { ok: false, error: 'mail' });
+  admin.recordOrder();
   console.log(`[order] отправлена (${ok.join(', ')}): ${o.breed} × ${o.qty}`);
   return json(res, 200, { ok: true, mailed: true });
 }
 
-/* ---------------- orders page for the team: /admin (password from ADMIN_PASSWORD) ---------------- */
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-function authorized(req) {
-  const h = req.headers.authorization || '';
-  if (!h.startsWith('Basic ')) return false;
-  const pass = Buffer.from(h.slice(6), 'base64').toString('utf8').split(':').slice(1).join(':');
-  const a = Buffer.from(pass), b = Buffer.from(ADMIN_PASSWORD);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
+/* ---------------- admin panel: server/admin.js (password from ADMIN_PASSWORD) ---------------- */
 function parseCsv(text) {
   const rows = [];
   for (const line of text.replace(/^\uFEFF/, '').split(/\r?\n/)) {
@@ -260,35 +256,10 @@ function parseCsv(text) {
   }
   return rows;
 }
-async function handleAdmin(req, res, pathname) {
-  if (!ADMIN_PASSWORD) return send(res, 404, 'Not found');
-  const ip = clientIp(req);
-  if (adminFails.over(ip)) return send(res, 429, 'Слишком много попыток. Попробуйте позже.', { 'Content-Type': 'text/plain; charset=utf-8', 'Retry-After': '900' });
-  if (!authorized(req)) {
-    if (req.headers.authorization) adminFails.hit(ip);
-    return send(res, 401, 'Нужен пароль', { 'WWW-Authenticate': 'Basic realm="INKUBIO", charset="UTF-8"', 'Content-Type': 'text/plain; charset=utf-8' });
-  }
-  const csv = existsSync(ORDERS_FILE) ? await readFile(ORDERS_FILE, 'utf8') : '';
-  if (pathname === '/admin/orders.csv') {
-    return send(res, 200, '\uFEFF' + csv.replace(/^\uFEFF/, ''), { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="orders.csv"', 'Cache-Control': 'no-store' });
-  }
-  const rows = parseCsv(csv);
-  const head = rows.shift() || [...CSV_HEAD, ...CSV_EXTRA];
-  const width = Math.max(head.length, ...rows.map((r) => r.length));
-  for (let i = head.length; i < width; i++) head.push(CSV_EXTRA[i - CSV_HEAD.length] || '');
-  rows.reverse();
-  const body = rows.map((r) => `<tr>${r.map((c, i) => `<td>${i === 2 ? `<a href="tel:${esc(c.replace(/[^\d+]/g, ''))}">${esc(c)}</a>` : esc(c)}</td>`).join('')}</tr>`).join('');
-  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>Заявки — INKUBIO</title><style>
-body{margin:0;background:#0c0c0e;color:#f6f2ea;font:15px/1.5 system-ui,sans-serif}main{max-width:1100px;margin:0 auto;padding:32px 16px}
-h1{font-size:26px;margin:0 0 6px}p{color:#a9a49b;margin:0 0 20px}a{color:#ffc93a}.wrap{overflow-x:auto;border:1px solid #2a2a2e;border-radius:14px}
-table{width:100%;border-collapse:collapse;min-width:720px}th,td{padding:11px 14px;text-align:left;border-bottom:1px solid #222226;white-space:nowrap}
-th{background:#141417;color:#a9a49b;font-weight:600;position:sticky;top:0}tr:hover td{background:#141417}.btn{display:inline-block;margin-bottom:16px;padding:9px 16px;border-radius:999px;background:#ffc93a;color:#17130a;font-weight:700;text-decoration:none}
-</style></head><body><main><h1>Заявки</h1><p>Всего: ${rows.length}. Новые сверху. Телефон — ссылка для звонка.</p>
-<a class="btn" href="/admin/orders.csv">Скачать для Excel</a>
-<div class="wrap"><table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body || '<tr><td colspan="${head.length}">Заявок пока нет</td></tr>'}</tbody></table></div></main></body></html>`;
-  return send(res, 200, html, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-}
+const admin = createAdmin({
+  dataDir: DATA_DIR, password: process.env.ADMIN_PASSWORD || '', breeds: BREEDS, ordersFile: ORDERS_FILE,
+  parseCsv, clientIp, makeLimiter, json, send,
+});
 
 /* ---------------- search engines ---------------- */
 function siteOrigin(req) {
@@ -298,7 +269,7 @@ function siteOrigin(req) {
 function handleSeo(req, res, pathname) {
   const origin = siteOrigin(req);
   if (pathname === '/robots.txt') {
-    return send(res, 200, `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nSitemap: ${origin}/sitemap.xml\n`, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return send(res, 200, `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /uploads/\nSitemap: ${origin}/sitemap.xml\n`, { 'Content-Type': 'text/plain; charset=utf-8' });
   }
   const today = new Date().toISOString().slice(0, 10);
   const urls = ['/', '/privacy.html'].map((u) => `<url><loc>${origin}${u}</loc><lastmod>${today}</lastmod></url>`).join('');
@@ -344,7 +315,7 @@ async function handleStatic(req, res) {
 const server = http.createServer(async (req, res) => {
   try {
     const { pathname } = new URL(req.url, 'http://x');
-    if (pathname === '/admin' || pathname === '/admin/orders.csv') return await handleAdmin(req, res, pathname);
+    if (await admin.handle(req, res, pathname)) return;
     if (pathname === '/robots.txt' || pathname === '/sitemap.xml') return handleSeo(req, res, pathname);
     if (pathname === '/api/order') {
       if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'method' });

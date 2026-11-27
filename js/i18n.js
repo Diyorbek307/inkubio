@@ -73,6 +73,10 @@
 
     /* ---------- the story ---------- */
     'Партнёры': ['Hamkorlar', 'Partners'],
+    'Новости': ['Yangiliklar', 'News'],
+    'Новости инкубатория': ['Inkubatoriya yangiliklari', 'Hatchery news'],
+    'Читать полностью': ['To‘liq o‘qish', 'Read more'],
+    'Свернуть': ['Yig‘ish', 'Show less'],
     'Республика Узбекистан': ['O‘zbekiston Respublikasi', 'Republic of Uzbekistan'],
     'Министерство сельского хозяйства': ['Qishloq xo‘jaligi vazirligi', 'Ministry of Agriculture'],
     'Ассоциация птицеводов Узбекистана': ['O‘zbekiston parrandachilar uyushmasi', 'Poultry Association of Uzbekistan'],
@@ -670,6 +674,22 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') open(false); });
   }
 
+  var UZ_MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
+  // '20 декабря' / '20-dekabr' / 'December 20'; parts: { year: true } adds the year, { monthYear: true } gives 'dekabr 2026'
+  function formatDate(d, parts) {
+    parts = parts || {};
+    if (!(d instanceof Date)) d = new Date(d);
+    if (isNaN(d.getTime())) return '';
+    if (lang === 'uz') {
+      var m = UZ_MONTHS[d.getMonth()];
+      if (parts.monthYear) return m + ' ' + d.getFullYear();
+      return d.getDate() + '-' + m + (parts.year ? ' ' + d.getFullYear() : '');
+    }
+    var loc = lang === 'en' ? 'en-US' : 'ru-RU';
+    if (parts.monthYear) return d.toLocaleDateString(loc, { month: 'long', year: 'numeric' });
+    return d.toLocaleDateString(loc, parts.year ? { day: 'numeric', month: 'long', year: 'numeric' } : { day: 'numeric', month: 'long' });
+  }
+
   document.documentElement.lang = lang;
   window.I18N = {
     lang: lang,
@@ -678,6 +698,7 @@
     locale: { uz: 'uz-UZ', ru: 'ru-RU', en: 'en-US' }[lang],
     t: t,
     set: setLang,
+    date: formatDate,
     missing: missing,
   };
   translatePage(document);

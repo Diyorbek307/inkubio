@@ -89,3 +89,22 @@ export const SITE = {
     // { date: '2026-12-12', breed: 'Cobb 500', left: 6500 },
   ],
 };
+
+// Changes made in the admin panel (/admin) are stored on the server and applied on top of the values above.
+// Every module that imports SITE waits for this (top-level await); a slow or missing server never blocks long.
+try {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 2500);
+  const r = await fetch('/api/content', { signal: ctl.signal, cache: 'no-cache' });
+  clearTimeout(timer);
+  if (r.ok) {
+    const saved = await r.json();
+    for (const [k, v] of Object.entries(saved || {})) {
+      if (v == null || v === '') continue;
+      if (k === 'deliveryMap' || k === 'calc' || k === 'schedule') SITE[k] = { ...SITE[k], ...v };
+      else SITE[k] = v;
+    }
+  }
+} catch {
+  /* opened as a file or the server is unreachable: the values above are used */
+}

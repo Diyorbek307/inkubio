@@ -134,7 +134,7 @@ if (lb) {
 const MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
 function fmtDate(d) {
   const m = /^(\d{4})-(\d{2})/.exec(d || '');
-  if (m && window.I18N && window.I18N.lang !== 'ru') return new Date(Number(m[1]), Number(m[2]) - 1, 1).toLocaleDateString(window.I18N.locale, { month: 'long', year: 'numeric' });
+  if (m && window.I18N && window.I18N.lang !== 'ru') return window.I18N.date(new Date(Number(m[1]), Number(m[2]) - 1, 1), { monthYear: true });
   return m ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : d || '';
 }
 if (reviews.length) {

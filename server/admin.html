@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>INKUBIO — панель управления</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo.svg" />
+<link rel="stylesheet" href="/css/fonts.css" />
+<style>
+:root { --bg:#0b0b0d; --panel:#141417; --panel2:#1b1b1f; --line:#26262b; --ink:#f4efe6; --muted:#9d988f; --accent:#ffc93a; --green:#3ccf7a; --red:#ff6b5b; --blue:#5cb8ff; --r:14px; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 Manrope, system-ui, sans-serif; }
+a { color:var(--accent); }
+button, input, select, textarea { font:inherit; color:inherit; }
+input, select, textarea { width:100%; background:#0f0f12; border:1px solid var(--line); border-radius:10px; padding:9px 12px; outline:none; transition:border-color .2s; }
+input:focus, select:focus, textarea:focus { border-color:var(--accent); }
+textarea { min-height:110px; resize:vertical; }
+label { display:block; font-size:13px; color:var(--muted); }
+label > input, label > select, label > textarea { margin-top:5px; color:var(--ink); }
+.btn { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:999px; border:1px solid var(--line); background:var(--panel2); cursor:pointer; font-weight:700; font-size:14px; text-decoration:none; color:var(--ink); white-space:nowrap; }
+.btn:hover { border-color:#3a3a40; }
+.btn.primary { background:var(--accent); color:#17130a; border-color:var(--accent); }
+.btn.danger { color:var(--red); }
+.btn.small { padding:5px 11px; font-size:13px; }
+.muted { color:var(--muted); }
+h1 { font:700 24px/1.2 Unbounded, Manrope, sans-serif; margin:0 0 4px; }
+h2 { font:700 17px/1.3 Unbounded, Manrope, sans-serif; margin:0 0 14px; }
+h3 { font-size:15px; margin:0 0 10px; }
+
+/* login */
+.login { min-height:100vh; display:grid; place-items:center; padding:20px; }
+.login form { width:min(380px, 100%); background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:28px; display:grid; gap:14px; }
+.login img { width:46px; }
+.err { color:var(--red); font-size:14px; min-height:20px; }
+
+/* layout */
+.top { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:14px; padding:12px 20px; background:rgba(11,11,13,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+.brand { display:flex; align-items:center; gap:10px; font:700 15px Unbounded, sans-serif; letter-spacing:.06em; }
+.brand img { width:26px; }
+.tabs { display:flex; gap:4px; margin-left:12px; overflow-x:auto; }
+.tabs button { padding:8px 14px; border-radius:999px; border:0; background:transparent; color:var(--muted); cursor:pointer; font-weight:700; white-space:nowrap; }
+.tabs button.on { background:var(--panel2); color:var(--ink); }
+.tabs .badge { background:var(--accent); color:#17130a; border-radius:999px; padding:0 7px; font-size:12px; margin-left:4px; }
+.spacer { flex:1; }
+main { max-width:1180px; margin:0 auto; padding:24px 20px 80px; }
+.head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:18px; }
+.grid { display:grid; gap:14px; }
+.kpis { grid-template-columns:repeat(4, 1fr); }
+.kpi b { display:block; font:700 28px/1.1 Unbounded, sans-serif; margin:6px 0 2px; }
+.kpi small { color:var(--muted); }
+.kpi .up { color:var(--green); } .kpi .down { color:var(--red); }
+.two { grid-template-columns:1fr 1fr; }
+.three { grid-template-columns:repeat(3, 1fr); }
+.chart { width:100%; height:230px; display:block; }
+.legend { display:flex; gap:16px; font-size:13px; color:var(--muted); }
+.legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+.bars div { display:grid; grid-template-columns:110px 1fr 54px; gap:10px; align-items:center; font-size:14px; margin:7px 0; }
+.bars span.track { height:8px; background:#222227; border-radius:9px; overflow:hidden; }
+.bars span.track i { display:block; height:100%; background:var(--accent); border-radius:9px; }
+.bars em { font-style:normal; text-align:right; color:var(--muted); }
+
+/* tables */
+.tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); }
+table { width:100%; border-collapse:collapse; min-width:860px; }
+th, td { padding:10px 12px; text-align:left; border-bottom:1px solid #1f1f23; font-size:14px; vertical-align:middle; }
+th { background:var(--panel); color:var(--muted); font-weight:600; position:sticky; top:0; }
+tr:hover td { background:#121215; }
+td select { width:auto; padding:5px 8px; }
+.st-new { border-color:var(--accent) !important; color:var(--accent); }
+.st-work { border-color:var(--blue) !important; color:var(--blue); }
+.st-done { border-color:var(--green) !important; color:var(--green); }
+.st-cancel { color:var(--muted); }
+.filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.filters input { max-width:280px; }
+.filters select { width:auto; }
+
+/* news */
+.news-list { grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); }
+.news-item { padding:0; overflow:hidden; display:flex; flex-direction:column; }
+.news-item .ph { aspect-ratio:16/9; background:#1b1b1f center/cover no-repeat; }
+.news-item .bd { padding:14px; display:grid; gap:6px; flex:1; }
+.news-item .row { display:flex; gap:8px; margin-top:auto; padding-top:8px; }
+.tag { display:inline-block; font-size:12px; padding:2px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+.tag.on { color:var(--green); border-color:rgba(60,207,122,.4); }
+.langs { display:flex; gap:6px; margin-bottom:10px; }
+.langs button { border:1px solid var(--line); background:transparent; border-radius:999px; padding:5px 12px; cursor:pointer; font-weight:700; color:var(--muted); }
+.langs button.on { color:#17130a; background:var(--accent); border-color:var(--accent); }
+.upload { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.upload .prev { width:120px; height:72px; border-radius:10px; background:#1b1b1f center/cover no-repeat; border:1px solid var(--line); }
+dialog { width:min(760px, calc(100vw - 24px)); max-height:calc(100vh - 40px); background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:20px; padding:22px; }
+dialog::backdrop { background:rgba(0,0,0,.7); }
+.form { display:grid; gap:12px; }
+.form .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.check { display:flex; align-items:center; gap:8px; color:var(--ink); font-size:14px; }
+.check input { width:auto; }
+
+/* info editor */
+.section { margin-bottom:16px; }
+.items { display:grid; gap:10px; }
+.item { display:grid; gap:10px; padding:12px; border:1px solid var(--line); border-radius:12px; background:#111114; }
+.item .rowx { display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); align-items:end; }
+.i18n { display:grid; gap:8px; grid-template-columns:repeat(3, 1fr); }
+.i18n label span { color:var(--accent); font-weight:700; }
+.savebar { position:sticky; bottom:0; display:flex; gap:12px; align-items:center; justify-content:flex-end; padding:12px 0; background:linear-gradient(transparent, var(--bg) 35%); }
+.toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); opacity:0; background:var(--panel2); border:1px solid var(--line); padding:10px 18px; border-radius:999px; transition:.25s; z-index:20; }
+.toast.on { opacity:1; transform:translateX(-50%); }
+.days label { display:inline-flex; align-items:center; gap:5px; margin-right:10px; color:var(--ink); }
+.days input { width:auto; }
+.empty { padding:30px; text-align:center; color:var(--muted); }
+@media (max-width: 860px) {
+  .kpis { grid-template-columns:1fr 1fr; }
+  .two, .three, .i18n, .form .row2 { grid-template-columns:1fr; }
+  .top { flex-wrap:wrap; padding:10px 14px; }
+  .tabs { margin-left:0; order:3; width:100%; }
+  main { padding:18px 14px 80px; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<script type="module">
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+// element builder: everything goes in as text, never as HTML
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k in el && k !== 'list') el[k] = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k instanceof Node ? k : String(k));
+  return el;
+}
+const api = async (url, opt = {}) => {
+  const r = await fetch(url, { credentials: 'same-origin', ...opt, headers: { ...(opt.body && !(opt.body instanceof Blob) ? { 'Content-Type': 'application/json' } : {}), ...(opt.headers || {}) } });
+  if (r.status === 401 && !url.endsWith('/login')) { renderLogin(); throw new Error('login'); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(data.error || r.status), { data, status: r.status });
+  return data;
+};
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('on'), 2400); }
+const fmt = new Intl.NumberFormat('ru-RU');
+const LANGS = [['ru', 'RU'], ['uz', 'UZ'], ['en', 'EN']];
+const asObj = (v) => (v && typeof v === 'object' ? v : { ru: v || '' });
+const show = (v) => (v && typeof v === 'object' ? v.ru || v.uz || v.en || '' : v || '');
+let BREEDS = ['Ross 308', 'Cobb 500', 'Арбор Эйкерс'];
+const app = $('#app');
+
+/* ---------- login ---------- */
+function renderLogin() {
+  app.replaceChildren();
+  const err = h('div', { class: 'err' });
+  const pass = h('input', { type: 'password', name: 'password', autocomplete: 'current-password', required: true, placeholder: 'Пароль' });
+  const form = h('form', { onsubmit: async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    try { await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: pass.value }) }); boot(); }
+    catch (x) { err.textContent = x.status === 429 ? 'Слишком много попыток. Подождите 15 минут.' : 'Неверный пароль'; }
+  } },
+    h('img', { src: '/img/logo.svg', alt: '' }),
+    h('h1', {}, 'Панель INKUBIO'),
+    h('p', { class: 'muted', style: { margin: 0 } }, 'Статистика, заявки, новости и информация на сайте'),
+    pass, err, h('button', { class: 'btn primary', type: 'submit' }, 'Войти'));
+  app.append(h('div', { class: 'login' }, form));
+  pass.focus();
+}
+
+/* ---------- shell ---------- */
+const TABS = [['stats', 'Обзор'], ['orders', 'Заявки'], ['news', 'Новости'], ['info', 'Информация на сайте']];
+let tab = (location.hash.slice(1) || 'stats');
+let newCount = 0;
+function shell() {
+  const tabs = h('nav', { class: 'tabs' }, TABS.map(([id, name]) => h('button', { class: id === tab ? 'on' : '', onclick: () => { tab = id; location.hash = id; shell(); } }, name, id === 'orders' && newCount ? h('span', { class: 'badge' }, newCount) : null)));
+  const top = h('header', { class: 'top' },
+    h('div', { class: 'brand' }, h('img', { src: '/img/logo.svg', alt: '' }), 'INKUBIO'),
+    tabs, h('div', { class: 'spacer' }),
+    h('a', { class: 'btn small', href: '/', target: '_blank' }, 'Открыть сайт ↗'),
+    h('button', { class: 'btn small', onclick: async () => { await api('/api/admin/logout', { method: 'POST' }); renderLogin(); } }, 'Выйти'));
+  const main = h('main');
+  app.replaceChildren(top, main);
+  ({ stats: viewStats, orders: viewOrders, news: viewNews, info: viewInfo }[tab] || viewStats)(main);
+}
+
+/* ---------- overview / statistics ---------- */
+const CHAPTERS = ['Чудо', 'Климат', 'Развитие', 'Рождение', 'Знакомство', 'Новый дом', 'О нас'];
+const LANG_NAMES = { uz: 'Oʻzbekcha', ru: 'Русский', en: 'English' };
+let period = 30;
+async function viewStats(main) {
+  const sel = h('select', { style: { width: 'auto' }, onchange: () => { period = Number(sel.value); viewStats(main); } },
+    [7, 30, 90, 365].map((d) => h('option', { value: d, selected: d === period }, `${d} дней`)));
+  main.replaceChildren(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Обзор'), h('div', { class: 'muted' }, 'Посетители и заявки — без IP-адресов и личных данных')), sel));
+  let days;
+  try { ({ days } = await api(`/api/admin/stats?days=${period}`)); } catch { return; }
+  const sum = (arr, k) => arr.reduce((s, d) => s + (d[k] || 0), 0);
+  const half = Math.floor(days.length / 2);
+  const cur = days.slice(half), prev = days.slice(0, half);
+  const tot = { visitors: sum(days, 'visitors'), views: sum(days, 'views'), orders: sum(days, 'orders'), opens: sum(days, 'opens') };
+  const trend = (k) => { const a = sum(cur, k), b = sum(prev, k); if (!b) return null; const p = Math.round(((a - b) / b) * 100); return h('span', { class: p >= 0 ? 'up' : 'down' }, `${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}%`); };
+  const conv = tot.visitors ? ((tot.orders / tot.visitors) * 100).toFixed(1) : '0';
+  const today = days[days.length - 1];
+  const kpi = (label, val, sub, k) => h('div', { class: 'card kpi' }, h('small', {}, label), h('b', {}, val), h('small', {}, sub, ' ', k ? trend(k) : null));
+  main.append(h('div', { class: 'grid kpis' },
+    kpi('Посетители', fmt.format(tot.visitors), `сегодня ${fmt.format(today.visitors)}`, 'visitors'),
+    kpi('Просмотры', fmt.format(tot.views), `сегодня ${fmt.format(today.views)}`, 'views'),
+    kpi('Заявки', fmt.format(tot.orders), `сегодня ${fmt.format(today.orders)}`, 'orders'),
+    kpi('Конверсия', `${conv}%`, `открыли форму ${fmt.format(tot.opens)} раз`)));
+
+  // chart: visitors as bars, orders as a line
+  const W = 1000, H = 230, P = 26;
+  const maxV = Math.max(1, ...days.map((d) => d.visitors));
+  const maxO = Math.max(1, ...days.map((d) => d.orders));
+  const bw = (W - P * 2) / days.length;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('class', 'chart'); svg.setAttribute('preserveAspectRatio', 'none');
+  const ns = (t, a) => { const e = document.createElementNS('http://www.w3.org/2000/svg', t); for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); svg.append(e); return e; };
+  for (let i = 0; i <= 4; i++) ns('line', { x1: P, x2: W - P, y1: P + ((H - P * 2) * i) / 4, y2: P + ((H - P * 2) * i) / 4, stroke: '#222227' });
+  days.forEach((d, i) => {
+    const bh = ((H - P * 2) * d.visitors) / maxV;
+    const r = ns('rect', { x: P + i * bw + bw * 0.15, y: H - P - bh, width: Math.max(1, bw * 0.7), height: bh, rx: Math.min(4, bw * 0.2), fill: '#ffc93a', opacity: 0.85 });
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'title'); t.textContent = `${d.date}: ${d.visitors} посетителей, ${d.views} просмотров, ${d.orders} заявок`; r.append(t);
+  });
+  const pts = days.map((d, i) => `${P + i * bw + bw / 2},${H - P - ((H - P * 2) * d.orders) / maxO}`).join(' ');
+  ns('polyline', { points: pts, fill: 'none', stroke: '#3ccf7a', 'stroke-width': 2.5, 'vector-effect': 'non-scaling-stroke' });
+  const first = days[0].date.split('-').reverse().slice(0, 2).join('.'), last = today.date.split('-').reverse().slice(0, 2).join('.');
+  main.append(h('div', { class: 'card', style: { marginTop: '14px' } },
+    h('div', { class: 'head', style: { marginBottom: '6px' } }, h('h2', { style: { margin: 0 } }, 'По дням'),
+      h('div', { class: 'legend' }, h('span', {}, h('i', { style: { background: '#ffc93a' } }), 'посетители'), h('span', {}, h('i', { style: { background: '#3ccf7a' } }), 'заявки'))),
+    svg, h('div', { class: 'legend', style: { justifyContent: 'space-between' } }, h('span', {}, first), h('span', {}, last))));
+
+  // breakdowns
+  const merge = (k) => { const o = {}; for (const d of days) for (const [a, b] of Object.entries(d[k] || {})) o[a] = (o[a] || 0) + b; return Object.entries(o).sort((a, b) => b[1] - a[1]); };
+  const bars = (title, entries, name = (x) => x, limit = 8) => {
+    const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
+    return h('div', { class: 'card bars' }, h('h3', {}, title),
+      entries.length ? entries.slice(0, limit).map(([k, v]) => h('div', {}, h('span', {}, name(k)), h('span', { class: 'track' }, h('i', { style: { width: `${(v / total) * 100}%` } })), h('em', {}, `${Math.round((v / total) * 100)}%`))) : h('div', { class: 'muted' }, 'Пока нет данных'));
+  };
+  const chapters = CHAPTERS.map((n, i) => [n, days.reduce((s, d) => s + (d.chapters?.[i] || 0), 0)]);
+  const ch0 = chapters[0][1] || 1;
+  main.append(h('div', { class: 'grid three', style: { marginTop: '14px' } },
+    bars('Языки', merge('langs'), (k) => LANG_NAMES[k] || k),
+    bars('Устройства', merge('devices'), (k) => ({ mobile: 'Телефоны', desktop: 'Компьютеры' }[k] || k)),
+    bars('Откуда пришли', merge('refs'), (k) => (k === 'direct' ? 'Прямые заходы' : k))));
+  main.append(h('div', { class: 'card bars', style: { marginTop: '14px' } }, h('h3', {}, 'До какой главы досматривают историю'),
+    chapters.map(([n, v]) => h('div', {}, h('span', {}, n), h('span', { class: 'track' }, h('i', { style: { width: `${Math.min(100, (v / ch0) * 100)}%` } })), h('em', {}, fmt.format(v))))));
+}
+
+/* ---------- orders ---------- */
+const STATUS = { new: 'Новая', work: 'В работе', done: 'Выполнена', cancel: 'Отказ' };
+async function viewOrders(main) {
+  let data;
+  try { data = await api('/api/admin/orders'); } catch { return; }
+  newCount = data.rows.filter((r) => r.status === 'new').length;
+  const q = h('input', { type: 'search', placeholder: 'Поиск: имя, телефон, порода, город…', oninput: () => draw() });
+  const f = h('select', { onchange: () => draw() }, h('option', { value: '' }, 'Все статусы'), Object.entries(STATUS).map(([k, v]) => h('option', { value: k }, v)));
+  const body = h('tbody');
+  const counts = Object.fromEntries(Object.keys(STATUS).map((k) => [k, data.rows.filter((r) => r.status === k).length]));
+  main.replaceChildren(
+    h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Заявки'), h('div', { class: 'muted' }, `Всего ${data.rows.length} · новых ${counts.new} · в работе ${counts.work} · выполнено ${counts.done}`)),
+      h('a', { class: 'btn primary', href: '/admin/orders.csv' }, 'Скачать для Excel')),
+    h('div', { class: 'filters' }, q, f),
+    h('div', { class: 'tablewrap' }, h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'Статус'), data.head.map((c) => h('th', {}, c)))), body)));
+  function draw() {
+    const s = q.value.trim().toLowerCase();
+    const rows = data.rows.filter((r) => (!f.value || r.status === f.value) && (!s || r.cells.join(' ').toLowerCase().includes(s)));
+    body.replaceChildren(...(rows.length ? rows.map((r) => {
+      const st = h('select', { class: `st-${r.status}`, onchange: async () => {
+        try { await api('/api/admin/order-status', { method: 'POST', body: JSON.stringify({ id: r.id, status: st.value }) }); r.status = st.value; st.className = `st-${st.value}`; toast('Статус сохранён'); }
+        catch { toast('Не удалось сохранить'); }
+      } }, Object.entries(STATUS).map(([k, v]) => h('option', { value: k, selected: k === r.status }, v)));
+      return h('tr', {}, h('td', {}, st), r.cells.map((c, i) => h('td', {}, i === 2 ? h('a', { href: `tel:${c.replace(/[^\d+]/g, '')}` }, c) : c)));
+    }) : [h('tr', {}, h('td', { colSpan: data.head.length + 1, class: 'empty' }, data.rows.length ? 'Ничего не найдено' : 'Заявок пока нет'))]));
+  }
+  draw();
+}
+
+/* ---------- uploads ---------- */
+async function upload(file) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { toast('Нужна картинка JPG, PNG или WEBP'); throw new Error('type'); }
+  if (file.size > 8 * 1024 * 1024) { toast('Файл больше 8 МБ'); throw new Error('size'); }
+  const r = await api('/api/admin/upload', { method: 'POST', body: file, headers: { 'Content-Type': file.type } });
+  return r.url;
+}
+function imageField(value, onChange) {
+  const prev = h('div', { class: 'prev', style: { backgroundImage: value ? `url("${value}")` : '' } });
+  const input = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', style: { display: 'none' }, onchange: async () => {
+    const file = input.files[0]; if (!file) return;
+    try { value = await upload(file); prev.style.backgroundImage = `url("${value}")`; onChange(value); toast('Фото загружено'); } catch { /* toast shown */ }
+  } });
+  return h('div', { class: 'upload' }, prev, input,
+    h('button', { class: 'btn small', type: 'button', onclick: () => input.click() }, value ? 'Заменить фото' : 'Загрузить фото'),
+    h('button', { class: 'btn small danger', type: 'button', onclick: () => { value = ''; prev.style.backgroundImage = ''; onChange(''); } }, 'Убрать'));
+}
+// one text in three languages
+function i18nField(label, value, onChange, { area = false, max = 300 } = {}) {
+  const v = { ...asObj(value) };
+  return h('div', {}, h('label', {}, label), h('div', { class: 'i18n', style: { marginTop: '5px' } },
+    LANGS.map(([l, L]) => h('label', {}, h('span', {}, L), h(area ? 'textarea' : 'input', { value: v[l] || '', maxLength: max, oninput: (e) => { v[l] = e.target.value; onChange({ ...v }); } })))));
+}
+
+/* ---------- news ---------- */
+async function viewNews(main) {
+  let items;
+  try { items = await api('/api/admin/news'); } catch { return; }
+  main.replaceChildren(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Новости'), h('div', { class: 'muted' }, 'Опубликованные новости показываются на сайте в блоке «Новости»')),
+    h('button', { class: 'btn primary', onclick: () => editNews({ date: new Date().toISOString().slice(0, 10), published: true, title: {}, text: {} }, main) }, '+ Добавить новость')));
+  if (!items.length) { main.append(h('div', { class: 'card empty' }, 'Новостей пока нет. Добавьте первую — например, о ближайшем выводе или новой породе.')); return; }
+  main.append(h('div', { class: 'grid news-list' }, items.map((n) => h('div', { class: 'card news-item' },
+    h('div', { class: 'ph', style: { backgroundImage: n.image ? `url("${n.image}")` : '' } }),
+    h('div', { class: 'bd' }, h('div', {}, h('span', { class: `tag ${n.published ? 'on' : ''}` }, n.published ? 'Опубликована' : 'Черновик'), ' ', h('span', { class: 'muted' }, n.date.split('-').reverse().join('.'))),
+      h('b', {}, show(n.title)), h('div', { class: 'muted' }, show(n.text).slice(0, 140) + (show(n.text).length > 140 ? '…' : '')),
+      h('div', { class: 'row' }, h('button', { class: 'btn small', onclick: () => editNews(n, main) }, 'Изменить'),
+        h('button', { class: 'btn small danger', onclick: async () => { if (!confirm('Удалить новость?')) return; await api(`/api/admin/news?id=${encodeURIComponent(n.id)}`, { method: 'DELETE' }); toast('Удалено'); viewNews(main); } }, 'Удалить')))))));
+}
+function editNews(n, main) {
+  const d = { ...n, title: { ...asObj(n.title) }, text: { ...asObj(n.text) } };
+  let lang = 'ru';
+  const title = h('input', { maxLength: 200 }), text = h('textarea', { maxLength: 6000, style: { minHeight: '200px' } });
+  const fill = () => { title.value = d.title[lang] || ''; text.value = d.text[lang] || ''; };
+  title.oninput = () => (d.title[lang] = title.value);
+  text.oninput = () => (d.text[lang] = text.value);
+  const langs = h('div', { class: 'langs' }, LANGS.map(([l, L]) => h('button', { type: 'button', class: l === lang ? 'on' : '', onclick: (e) => { lang = l; [...langs.children].forEach((b) => b.classList.toggle('on', b === e.target)); fill(); } }, L)));
+  const dlg = h('dialog', {}, h('form', { class: 'form', method: 'dialog', onsubmit: async (e) => {
+    e.preventDefault();
+    if (!d.title.ru && !d.title.uz && !d.title.en) { toast('Напишите заголовок'); return; }
+    try { await api('/api/admin/news', { method: 'PUT', body: JSON.stringify(d) }); dlg.close(); toast('Новость сохранена'); viewNews(main); } catch { toast('Не удалось сохранить'); }
+  } },
+    h('h2', {}, n.id ? 'Изменить новость' : 'Новая новость'),
+    h('div', { class: 'row2' }, h('label', {}, 'Дата', h('input', { type: 'date', value: d.date, onchange: (e) => (d.date = e.target.value) })),
+      h('label', { class: 'check', style: { alignSelf: 'end', paddingBottom: '10px' } }, h('input', { type: 'checkbox', checked: d.published, onchange: (e) => (d.published = e.target.checked) }), 'Опубликована на сайте')),
+    h('div', {}, h('label', {}, 'Язык текста — заполните хотя бы один, остальные можно позже'), langs),
+    h('label', {}, 'Заголовок', title), h('label', {}, 'Текст', text),
+    h('div', {}, h('label', {}, 'Фото'), imageField(d.image, (v) => (d.image = v))),
+    h('div', { class: 'savebar' }, h('button', { class: 'btn', type: 'button', onclick: () => dlg.close() }, 'Отмена'), h('button', { class: 'btn primary', type: 'submit' }, 'Сохранить'))));
+  document.body.append(dlg);
+  dlg.addEventListener('close', () => dlg.remove());
+  fill();
+  dlg.showModal();
+}
+
+/* ---------- site information ---------- */
+async function viewInfo(main) {
+  let saved, SITE;
+  try {
+    saved = await api('/api/admin/content');
+    ({ SITE } = await import(`/js/config.js?v=${Date.now()}`)); // the site's values with the saved changes already applied
+  } catch { return; }
+  const c = {
+    phone: SITE.phone, email: SITE.email, telegram: SITE.telegram, whatsapp: SITE.whatsapp,
+    address: SITE.address, hours: SITE.hours, schedule: { ...SITE.schedule },
+    currency: SITE.currency, prices: { ...SITE.prices }, delivery: SITE.delivery, calc: { ...SITE.calc },
+    hatches: [...(SITE.hatches || [])], stats: [...(SITE.stats || [])], reviews: [...(SITE.reviews || [])], photos: [...(SITE.photos || [])],
+    reviewLink: SITE.reviewLink, metrika: SITE.metrika,
+    deliveryMap: { cities: [...(SITE.deliveryMap?.cities || [])] },
+  };
+  const field = (label, key, type = 'text', obj = c) => h('label', {}, label, h('input', { type, value: obj[key] ?? '', oninput: (e) => (obj[key] = type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value) }));
+  const section = (title, sub, ...kids) => h('div', { class: 'card section' }, h('h2', {}, title), sub ? h('p', { class: 'muted', style: { margin: '-8px 0 14px' } }, sub) : null, ...kids);
+
+  // a list of items with add / remove
+  function listEditor(arr, make, render, addLabel) {
+    const box = h('div', { class: 'items' });
+    const draw = () => box.replaceChildren(...arr.map((it, i) => h('div', { class: 'item' }, render(it, i),
+      h('div', {}, h('button', { class: 'btn small danger', type: 'button', onclick: () => { arr.splice(i, 1); draw(); } }, 'Удалить')))),
+      h('div', {}, h('button', { class: 'btn small', type: 'button', onclick: () => { arr.push(make()); draw(); } }, addLabel)));
+    draw();
+    return box;
+  }
+  const sel = (value, options, onChange) => h('select', { onchange: (e) => onChange(e.target.value) }, options.map(([v, n]) => h('option', { value: v, selected: v === value }, n)));
+  const DAYN = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+  main.replaceChildren(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Информация на сайте'), h('div', { class: 'muted' }, 'Изменения появятся на сайте сразу после сохранения'))),
+    section('Контакты', null,
+      h('div', { class: 'grid two' }, field('Телефон (как показывать)', 'phone', 'tel'), field('Почта', 'email', 'email'),
+        field('Telegram (имя без @)', 'telegram'), field('WhatsApp (номер, только цифры)', 'whatsapp')),
+      h('div', { style: { marginTop: '12px' } }, i18nField('Адрес', c.address, (v) => (c.address = v))),
+      h('div', { style: { marginTop: '12px' } }, i18nField('Часы работы (как показывать)', c.hours, (v) => (c.hours = v))),
+      h('div', { class: 'grid two', style: { marginTop: '12px' } },
+        h('div', {}, h('label', {}, 'Рабочие дни (для статуса «На связи сейчас»)'), h('div', { class: 'days', style: { marginTop: '8px' } },
+          DAYN.map((n, i) => h('label', {}, h('input', { type: 'checkbox', checked: (c.schedule.days || []).includes(i + 1), onchange: (e) => { const s = new Set(c.schedule.days || []); e.target.checked ? s.add(i + 1) : s.delete(i + 1); c.schedule.days = [...s].sort(); } }), n)))),
+        h('div', { class: 'grid two' }, field('С', 'from', 'time', c.schedule), field('До', 'to', 'time', c.schedule)))),
+
+    section('Цены', 'Пока у породы нет цены, в форме заказа сумма не показывается',
+      h('div', { class: 'grid three' }, field('Валюта (например «сум»)', 'currency'), BREEDS.map((b) => field(`${b} — цена цыплёнка`, b, 'number', c.prices)), field('Доставка (пусто — «рассчитывается отдельно»)', 'delivery', 'number')),
+      h('h3', { style: { marginTop: '16px' } }, 'Калькулятор окупаемости — стартовые значения'),
+      h('div', { class: 'grid three' }, field('Корм, за кг', 'feedPrice', 'number', c.calc), field('Продажа, за кг живого веса', 'salePrice', 'number', c.calc), field('Сохранность, %', 'survival', 'number', c.calc))),
+
+    section('Ближайшие выводы', 'Посетители могут забронировать цыплят из этих партий',
+      listEditor(c.hatches, () => ({ date: '', breed: BREEDS[0], left: null }), (it) => h('div', { class: 'rowx' },
+        h('label', {}, 'Дата вывода', h('input', { type: 'date', value: it.date, onchange: (e) => (it.date = e.target.value) })),
+        h('label', {}, 'Порода', sel(it.breed, BREEDS.map((b) => [b, b]), (v) => (it.breed = v))),
+        h('label', {}, 'Осталось голов', h('input', { type: 'number', value: it.left ?? '', oninput: (e) => (it.left = e.target.value === '' ? null : Number(e.target.value)) }))), '+ Добавить вывод')),
+
+    section('Цифры компании', 'Крупные числа в блоке «О нас», например «240 000 — яиц единовременная закладка»',
+      listEditor(c.stats, () => ({ value: null, label: {} }), (it) => h('div', { class: 'grid' },
+        h('label', {}, 'Число', h('input', { type: 'number', value: it.value ?? '', oninput: (e) => (it.value = Number(e.target.value)) })),
+        i18nField('Подпись', it.label, (v) => (it.label = v))), '+ Добавить цифру')),
+
+    section('Фото «Как мы работаем»', 'Фото из инкубатория, крупное — первое или отмеченное «крупно»',
+      listEditor(c.photos, () => ({ src: '', caption: {}, wide: false }), (it) => h('div', { class: 'grid' },
+        imageField(it.src, (v) => (it.src = v)),
+        i18nField('Подпись', it.caption, (v) => (it.caption = v)),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!it.wide, onchange: (e) => (it.wide = e.target.checked) }), 'Показывать крупно')), '+ Добавить фото')),
+
+    section('Отзывы клиентов', 'Только настоящие отзывы, с согласия клиента',
+      listEditor(c.reviews, () => ({ name: '', place: {}, breed: '', qty: null, text: {}, rating: 5, date: new Date().toISOString().slice(0, 7), photo: '' }), (it) => h('div', { class: 'grid' },
+        h('div', { class: 'rowx' },
+          h('label', {}, 'Имя', h('input', { value: it.name || '', oninput: (e) => (it.name = e.target.value) })),
+          h('label', {}, 'Порода', sel(it.breed || '', [['', '—'], ...BREEDS.map((b) => [b, b])], (v) => (it.breed = v))),
+          h('label', {}, 'Сколько голов', h('input', { type: 'number', value: it.qty ?? '', oninput: (e) => (it.qty = e.target.value === '' ? null : Number(e.target.value)) })),
+          h('label', {}, 'Оценка', sel(String(it.rating || 5), [5, 4, 3, 2, 1].map((n) => [String(n), '★'.repeat(n)]), (v) => (it.rating = Number(v)))),
+          h('label', {}, 'Месяц', h('input', { type: 'month', value: it.date || '', onchange: (e) => (it.date = e.target.value) }))),
+        i18nField('Откуда (город, тип хозяйства)', it.place, (v) => (it.place = v)),
+        i18nField('Текст отзыва', it.text, (v) => (it.text = v), { area: true, max: 1200 }),
+        h('div', {}, h('label', {}, 'Фото из хозяйства (необязательно)'), imageField(it.photo, (v) => (it.photo = v)))), '+ Добавить отзыв')),
+
+    section('Города доставки', 'Города на карте доставки: расстояние по дороге и направление от инкубатория',
+      listEditor(c.deliveryMap.cities, () => ({ name: '', km: null, dir: 'С' }), (it) => h('div', { class: 'rowx' },
+        h('label', {}, 'Город', h('input', { value: it.name || '', oninput: (e) => (it.name = e.target.value) })),
+        h('label', {}, 'Км по дороге', h('input', { type: 'number', value: it.km ?? '', oninput: (e) => (it.km = Number(e.target.value)) })),
+        h('label', {}, 'Направление', sel(it.dir || 'С', [['С', 'Север'], ['СВ', 'Северо-восток'], ['В', 'Восток'], ['ЮВ', 'Юго-восток'], ['Ю', 'Юг'], ['ЮЗ', 'Юго-запад'], ['З', 'Запад'], ['СЗ', 'Северо-запад']], (v) => (it.dir = v)))), '+ Добавить город')),
+
+    section('Прочее', null, h('div', { class: 'grid two' }, field('Ссылка «Оставить отзыв» (https://…)', 'reviewLink', 'url'), field('Яндекс Метрика — номер счётчика', 'metrika'))),
+
+    h('div', { class: 'savebar' }, h('span', { class: 'muted' }, Object.keys(saved).length ? 'Сохранённые изменения уже на сайте' : 'Сейчас на сайте значения по умолчанию'),
+      h('button', { class: 'btn primary', onclick: async () => {
+        try { await api('/api/admin/content', { method: 'PUT', body: JSON.stringify(c) }); toast('Сохранено — уже на сайте'); }
+        catch { toast('Не удалось сохранить'); }
+      } }, 'Сохранить всё')));
+}
+
+/* ---------- start ---------- */
+async function boot() {
+  try { const me = await api('/api/admin/me'); BREEDS = me.breeds || BREEDS; } catch { return; }
+  try { const o = await api('/api/admin/orders'); newCount = o.rows.filter((r) => r.status === 'new').length; } catch { /* fine */ }
+  shell();
+}
+window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (t && t !== tab && TABS.some(([id]) => id === t)) { tab = t; shell(); } });
+boot();
+</script>
+</body>
+</html>

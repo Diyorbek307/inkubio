@@ -41,6 +41,9 @@ const CHAPTERS = [
 const $ = (s) => document.querySelector(s);
 const say = (s, v) => (window.I18N ? window.I18N.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && k in v ? v[k] : m)));
 const LOCALE = window.I18N?.locale || 'ru-RU';
+// texts from the admin panel go into HTML templates escaped
+const escHtml = (x) => String(x ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const stat = (t, v) => { try { window.inkTrack?.(t, v); } catch { /* statistics are optional */ } };
 const LANG = window.I18N?.lang || 'ru';
 const $$ = (s) => [...document.querySelectorAll(s)];
 
@@ -1236,6 +1239,7 @@ function update(t, time, dt) {
     lastChapter = active;
     counterEl.querySelector('b').textContent = String(active + 1).padStart(2, '0');
     counterEl.querySelector('em').textContent = say(CHAPTERS[active].name);
+    stat('chapter', active);
   }
   counterEl.classList.toggle('gone', t > TOTAL + 40);
 }
@@ -1562,8 +1566,8 @@ if (hatches.length) {
   const max = Math.max(...hatches.map((h) => h.left || 0), 1);
   $('#hatchList').innerHTML = hatches.map((h, i) => {
     const d = new Date(h.date);
-    return `<article class="hatch"><time datetime="${h.date}">${d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })}</time>
-      <span>${say(h.breed)}</span>${h.left != null ? `<span class="left">${say('осталось {n} голов', { n: fmtNum.format(h.left) })}</span><div class="bar"><i style="width:${(h.left / max) * 100}%"></i></div>` : ''}
+    return `<article class="hatch"><time datetime="${escHtml(h.date)}">${window.I18N ? window.I18N.date(d) : d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })}</time>
+      <span>${escHtml(say(h.breed))}</span>${h.left != null ? `<span class="left">${say('осталось {n} голов', { n: fmtNum.format(h.left) })}</span><div class="bar"><i style="width:${(Number(h.left) / max) * 100}%"></i></div>` : ''}
       <button class="pill ghost" type="button" data-book="${i}">${say('Забронировать')}</button></article>`;
   }).join('');
   $('#hatches').hidden = false;
@@ -1665,7 +1669,7 @@ $$('.fact').forEach((f) => f.addEventListener('click', () => f.setAttribute('ari
 const statsEl = $('#stats');
 if (Array.isArray(SITE.stats) && SITE.stats.length) {
   statsEl.innerHTML = SITE.stats.map((s) => `<div class="stat"><b data-count="${Number(s.value) || 0}">0</b><span></span></div>`).join('');
-  [...statsEl.querySelectorAll('.stat span')].forEach((el, i) => (el.textContent = SITE.stats[i].label));
+  [...statsEl.querySelectorAll('.stat span')].forEach((el, i) => (el.textContent = say(SITE.stats[i].label)));
   statsEl.hidden = false;
 } else statsEl.remove();
 
@@ -1696,6 +1700,7 @@ counters.forEach((c) => io.observe(c));
 
 const dialog = $('#orderDialog');
 $$('[data-order]').forEach((b) => b.addEventListener('click', (e) => {
+  stat('open');
   e.preventDefault();
   const of = $('#orderForm');
   if (b.dataset.breed) of.breed.value = b.dataset.breed;

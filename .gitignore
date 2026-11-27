@@ -1,6 +1,7 @@
 node_modules/
 .env
 orders.csv
+data/
 ссылка на сайт.txt
 
 # не часть сайта
