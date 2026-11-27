@@ -13,6 +13,7 @@ export DEBIAN_FRONTEND=noninteractive
 echo "== downloading ${REPO}@${BRANCH}"
 command -v curl >/dev/null || { apt-get update -y -q && apt-get install -y -q curl ca-certificates >/dev/null; }
 SRC=$(mktemp -d)
+chmod 755 "$SRC" # mktemp makes it root-only; the archive root becomes the app folder
 trap 'rm -rf "$SRC"' EXIT
 curl -fsSL "https://codeload.github.com/${REPO}/tar.gz/refs/heads/${BRANCH}" | tar -xz -C "$SRC" --strip-components=1
 [ -f "$SRC/server.js" ] || { echo "download failed"; exit 1; }

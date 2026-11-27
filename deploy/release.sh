@@ -7,6 +7,8 @@ tar -xzf /tmp/inkubio/site.tgz -C "$NEW"
 cd "$NEW"
 npm ci --omit=dev --no-audit --no-fund --loglevel=error
 chown -R root:root "$NEW"
+# readable by the site service user, whatever permissions the archive carried
+chmod -R u=rwX,go=rX "$NEW"
 # a new .env from the laptop, when one was uploaded (passwords stay out of the archive)
 if [ -f /tmp/inkubio/env ]; then install -m 600 /tmp/inkubio/env /opt/inkubio/.env; rm -f /tmp/inkubio/env; fi
 rm -rf /opt/inkubio/app.old
