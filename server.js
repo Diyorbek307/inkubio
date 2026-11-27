@@ -227,8 +227,15 @@ async function handleOrder(req, res) {
   const results = await Promise.allSettled(channels.map(([, fn]) => fn()));
   const ok = channels.filter((_, i) => results[i].status === 'fulfilled').map(([n]) => n);
   results.forEach((r, i) => r.status === 'rejected' && console.error(`[order] ${channels[i][0]}: не удалось отправить —`, r.reason?.message));
-  await saveOrder(o, ok.length ? `отправлено (${ok.join(', ')})` : 'ошибка отправки').catch(() => {});
-  if (!ok.length) return json(res, 502, { ok: false, error: 'mail' });
+  const saved = await saveOrder(o, ok.length ? `отправлено (${ok.join(', ')})` : 'ошибка отправки').then(() => true, () => false);
+  // Telegram / mail down but the order is safely on the server (orders.csv, the admin panel): the customer
+  // must not think the order was lost — only when it could not be kept anywhere is it an error
+  if (!ok.length) {
+    if (!saved) return json(res, 502, { ok: false, error: 'mail' });
+    admin.recordOrder();
+    console.error(`[order] СОХРАНЕНА, но не отправлена ни в один канал — смотрите в /admin: ${o.name}, ${o.phone}`);
+    return json(res, 200, { ok: true, mailed: false });
+  }
   admin.recordOrder();
   console.log(`[order] отправлена (${ok.join(', ')}): ${o.breed} × ${o.qty}`);
   return json(res, 200, { ok: true, mailed: true });
