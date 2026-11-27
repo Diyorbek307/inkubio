@@ -84,8 +84,14 @@ SwiftShader: `chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshade
 
 ## Выкладка
 
-Render автодеплой из `main` у владельца срабатывал не всегда — после пуша может понадобиться
-в панели Render: **Manual Deploy → Deploy latest commit**, затем Ctrl+F5 на сайте.
+**Боевой сайт: https://inkubio.com** — VPS Servercore, Ташкент (`157.22.133.83`, Ubuntu 24.04, 1 vCPU / 1 ГБ),
+DNS в Cloudflare (A-записи `@` и `www`, без прокси). Node + Caddy (HTTPS сам), служба `inkubio`.
+Обновление — владелец заходит на сервер со своего ноутбука (`ssh -i ~/.ssh/inkubio_deploy root@157.22.133.83`)
+и выполняет: `curl -fsSL https://raw.githubusercontent.com/Diyorbek307/inkubio/main/deploy/install.sh | bash -s -- inkubio.com`
+(скачивает `main` с GitHub; репозиторий публичный). Настройки — `/opt/inkubio/.env` (ADMIN_PASSWORD,
+TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID), данные — `/var/lib/inkubio` (заявки, админка, фото).
+Журнал: `journalctl -u inkubio -n 50`. Из облачной сессии Claude на сервер не попасть (порт 22 закрыт, ключ
+только у владельца) — давать владельцу готовые команды. Старый адрес inkubio.onrender.com больше не основной.
 
 ## Идеи на будущее (владелец просит «ещё лучше»)
 
